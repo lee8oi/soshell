@@ -28,6 +28,12 @@ type packet struct {
 	Map  map[string]string
 }
 
+// client is an extensible type representing a single websocket client.
+type client struct {
+	ws            *websocket.Conn
+	user, address string
+}
+
 // checkTLS returns "SECURED" if TLS handshake is complete or "UNSECURED" if not.
 func checkTLS(r *http.Request) string {
 	if r.TLS != nil && r.TLS.HandshakeComplete {
@@ -54,15 +60,15 @@ func newPacket(args ...string) (pack packet) {
 }
 
 // readPacket reads a single packet from a websocket.
-func readPacket(ws *websocket.Conn) (p packet, e error) {
-	e = websocket.JSON.Receive(ws, &p)
+func (c *client) readPacket() (p packet, e error) {
+	e = websocket.JSON.Receive(c.ws, &p)
 	return
 }
 
 // sendPacket converts a packet to JSON then writes it to the websocket.
-func sendPacket(ws *websocket.Conn, pack packet) (e error) {
+func (c *client) sendPacket(pack packet) (e error) {
 	if j, e := json.Marshal(pack); e == nil {
-		_, e = ws.Write(j)
+		_, e = c.ws.Write(j)
 	}
 	if e != nil {
 		log.Println(e)
@@ -74,15 +80,15 @@ func sendPacket(ws *websocket.Conn, pack packet) (e error) {
 packHandler reads all incoming packets from the websocket and checks for
 command handlers.
 */
-func packetHandler(ws *websocket.Conn) (e error) {
+func (c *client) packetHandler() (e error) {
 	for {
-		p, e := readPacket(ws)
+		p, e := c.readPacket()
 		if e == nil {
 			if len(p.Args) > 0 {
 				if cmd, ok := cmdMap[p.Args[0]]; ok {
-					e = cmd.Handler(ws, p)
+					e = cmd.Handler(c, p)
 				} else {
-					e = appendMsg(ws, "#msgList", p.Args[0]+": command not found ")
+					e = c.appendMsg("#msgList", p.Args[0]+": command not found ")
 				}
 			} else {
 				e = errors.New("Args: object missing")
@@ -101,10 +107,11 @@ func sockHandler(ws *websocket.Conn) {
 	if ws.Config().Origin.String() != "https://"+*hostname+*addrs {
 		log.Println("Bad Origin!", ws.Config().Origin)
 	} else {
-		if e := appendMsg(ws, "#msgList", "SOCKET "+checkTLS(ws.Request())); e == nil {
+		var c = client{ws: ws, address: ws.Request().RemoteAddr}
+		if e := c.appendMsg("#msgList", "SOCKET "+checkTLS(ws.Request())); e == nil {
 			defer log.Println(ws.Request().RemoteAddr, "disconnected")
-			log.Println(ws.Request().RemoteAddr, "connected")
-			e = packetHandler(ws)
+			log.Println(c.address, "connected")
+			e = c.packetHandler()
 			if e != nil && e != io.EOF {
 				log.Println(e)
 			}
