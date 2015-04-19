@@ -6,7 +6,7 @@ package main
 
 import (
 	"encoding/json"
-	"errors"
+	//"errors"
 	"flag"
 	"golang.org/x/net/websocket"
 	"html/template"
@@ -76,25 +76,16 @@ func (c *client) sendPacket(pack packet) (e error) {
 	return
 }
 
-/*
-packHandler reads all incoming packets from the websocket and checks for
-command handlers.
-*/
-func (c *client) packetHandler() (e error) {
+// listener listens for incoming packets and passes them to the respective handler function.
+func (c *client) listener() (e error) {
 	for {
-		p, e := c.readPacket()
-		if e == nil {
-			if len(p.Args) > 0 {
-				if cmd, ok := cmdMap[p.Args[0]]; ok {
-					e = cmd.Handler(c, p)
-				} else {
-					e = c.appendMsg("#msgList", p.Args[0]+": command not found ")
-				}
+		if p, e := c.readPacket(); e == nil && len(p.Args) > 0 {
+			if cmd, ok := cmdMap[p.Args[0]]; ok {
+				e = cmd.Handler(c, p)
 			} else {
-				e = errors.New("Args: object missing")
+				e = c.appendMsg("#msgList", p.Args[0]+": command not found ")
 			}
-		}
-		if e != nil {
+		} else {
 			break
 		}
 		time.Sleep(time.Second)
@@ -102,27 +93,10 @@ func (c *client) packetHandler() (e error) {
 	return
 }
 
-// sockHandler handles individual websocket connections.
-func sockHandler(ws *websocket.Conn) {
-	if ws.Config().Origin.String() != "https://"+*hostname+*addrs {
-		log.Println("Bad Origin!", ws.Config().Origin)
-	} else {
-		var c = client{ws: ws, address: ws.Request().RemoteAddr}
-		if e := c.appendMsg("#msgList", "SOCKET "+checkTLS(ws.Request())); e == nil {
-			defer log.Println(ws.Request().RemoteAddr, "disconnected")
-			log.Println(c.address, "connected")
-			e = c.packetHandler()
-			if e != nil && e != io.EOF {
-				log.Println(e)
-			}
-		}
-	}
-}
-
 var clientTemplate = template.Must(template.ParseFiles("client.html"))
 
-// clientServer serves the websocket client to the requesting browser.
-func clientServer(w http.ResponseWriter, r *http.Request) {
+// cHandler serves the websocket client html to the requesting browser.
+func cHandler(w http.ResponseWriter, r *http.Request) {
 	type data struct {
 		SockUrl, Status string
 	}
@@ -130,10 +104,27 @@ func clientServer(w http.ResponseWriter, r *http.Request) {
 	clientTemplate.Execute(w, data{SockUrl: sockUrl, Status: "HTTP " + checkTLS(r)})
 }
 
+// wsHandler handles the incoming websocket connections.
+func wsHandler(ws *websocket.Conn) {
+	if ws.Config().Origin.String() != "https://"+*hostname+*addrs {
+		log.Println("Bad Origin!", ws.Config().Origin)
+	} else {
+		var c = client{ws: ws, address: ws.Request().RemoteAddr}
+		if e := c.appendMsg("#msgList", "SOCKET "+checkTLS(ws.Request())); e == nil {
+			defer log.Println(c.address, "disconnected")
+			log.Println(c.address, "connected")
+			e = c.listener()
+			if e != nil && e != io.EOF {
+				log.Println(e)
+			}
+		}
+	}
+}
+
 func main() {
 	flag.Parse()
-	http.Handle("/", http.HandlerFunc(clientServer))
-	http.Handle("/sock", websocket.Handler(sockHandler))
+	http.Handle("/", http.HandlerFunc(cHandler))
+	http.Handle("/sock", websocket.Handler(wsHandler))
 	http.Handle("/public/", http.StripPrefix("/public/", http.FileServer(http.Dir("public"))))
 	go func() {
 		// cert.pem is ssl.crt + *server.ca.pem

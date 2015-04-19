@@ -33,7 +33,6 @@ function AppendMsg(selector, text) {
 	obj["Map"]["Text"] = text;
 	obj["Map"]["Scroll"] = "true";
 	RunDom(obj);
-	//msglist.scrollTop = msglist.scrollHeight;
 }
 function GetArgs(str) {
 	var re = /`([\S\s]*)`|('([\S \t\r]*)'|"([\S ]*)"|\S+)/g;
