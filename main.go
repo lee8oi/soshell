@@ -5,19 +5,20 @@
 package main
 
 import (
-	"encoding/json"
 	"flag"
-	"golang.org/x/net/websocket"
-	"html/template"
+	"github.com/gorilla/websocket"
 	"io"
 	"log"
 	"net/http"
+	"text/template"
 	"time"
 )
 
-var addr = flag.String("http", ":8080", "http service address")
+var addr = flag.String("addr", ":8080", "http service address")
 var addrs = flag.String("https", ":8090", "https service address")
 var hostname = flag.String("host", "localhost", "domain or host name")
+
+var clientTempl = template.Must(template.ParseFiles("client.html"))
 
 // packet is an extensible object type transmitted via websocket as JSON.
 type packet struct {
@@ -55,27 +56,12 @@ func newPacket(args ...string) (pack packet) {
 	return
 }
 
-// readPacket reads a single packet from a websocket.
-func (c *client) readPacket() (p packet, e error) {
-	e = websocket.JSON.Receive(c.ws, &p)
-	return
-}
-
-// sendPacket converts a packet to JSON then writes it to the websocket.
-func (c *client) sendPacket(pack packet) (e error) {
-	if j, e := json.Marshal(pack); e == nil {
-		_, e = c.ws.Write(j)
-	}
-	if e != nil {
-		log.Println(e)
-	}
-	return
-}
-
 // listener listens for incoming packets and passes them to the respective handlers.
 func (c *client) listener() (e error) {
 	for {
-		if p, e := c.readPacket(); e == nil && len(p.Args) > 0 {
+		var p packet
+		e = c.ws.ReadJSON(&p)
+		if e == nil && len(p.Args) > 0 {
 			if cmd, ok := cmdMap[p.Args[0]]; ok {
 				e = cmd.Handler(c, p)
 			} else {
@@ -89,38 +75,54 @@ func (c *client) listener() (e error) {
 	return
 }
 
-var clientTemplate = template.Must(template.ParseFiles("client.html"))
+func serveWs(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "GET" {
+		http.Error(w, "Method not allowed", 405)
+		return
+	}
+	if r.Header.Get("Origin") != "https://"+r.Host {
+		http.Error(w, "Origin not allowed", 403)
+		return
+	}
+	ws, err := websocket.Upgrade(w, r, nil, 1024, 1024)
+	if _, ok := err.(websocket.HandshakeError); ok {
+		http.Error(w, "Not a websocket handshake", 400)
+		return
+	} else if err != nil {
+		log.Println(err)
+		return
+	}
+	var c = client{ws: ws, address: ws.RemoteAddr().String()}
+	log.Println(c.address, "connected")
+	c.appendMsg("#msgList", "WEBSOCKET "+checkTLS(r))
+	e := c.listener()
+	if e != nil && e != io.EOF {
+		log.Println(e)
+	}
+	log.Println(c.address, "disconnected")
+}
 
-// cHandler serves the websocket client html to the requesting browser.
-func cHandler(w http.ResponseWriter, r *http.Request) {
+func serveClient(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path != "/" {
+		http.Error(w, "Not found", 404)
+		return
+	}
+	if r.Method != "GET" {
+		http.Error(w, "Method nod allowed", 405)
+		return
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	type data struct {
 		SockUrl, Status string
 	}
-	sockUrl := "wss://" + *hostname + *addrs + "/sock"
-	clientTemplate.Execute(w, data{SockUrl: sockUrl, Status: "HTTP " + checkTLS(r)})
-}
-
-// wsHandler handles the incoming websocket connections.
-func wsHandler(ws *websocket.Conn) {
-	if ws.Config().Origin.String() != "https://"+*hostname+*addrs {
-		log.Println("Bad Origin!", ws.Config().Origin)
-	} else {
-		var c = client{ws: ws, address: ws.Request().RemoteAddr}
-		if e := c.appendMsg("#msgList", "SOCKET "+checkTLS(ws.Request())); e == nil {
-			defer log.Println(c.address, "disconnected")
-			log.Println(c.address, "connected")
-			e = c.listener()
-			if e != nil && e != io.EOF {
-				log.Println(e)
-			}
-		}
-	}
+	sockUrl := "wss://" + *hostname + *addrs + "/ws"
+	clientTempl.Execute(w, data{SockUrl: sockUrl, Status: "HTTP " + checkTLS(r)})
 }
 
 func main() {
 	flag.Parse()
-	http.Handle("/", http.HandlerFunc(cHandler))
-	http.Handle("/sock", websocket.Handler(wsHandler))
+	http.HandleFunc("/", serveClient)
+	http.HandleFunc("/ws", serveWs)
 	http.Handle("/public/", http.StripPrefix("/public/", http.FileServer(http.Dir("public"))))
 	go func() {
 		// cert.pem is ssl.crt + *server.ca.pem

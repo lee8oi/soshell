@@ -12,6 +12,7 @@ interacting with the client HTML/CSS.
 package main
 
 import (
+	"log"
 	"strings"
 )
 
@@ -23,7 +24,7 @@ func (c *client) appendMsg(selector, text string) (e error) {
 	p.Map["Class"] = "msg"
 	p.Map["Text"] = text
 	p.Map["Scroll"] = "true"
-	e = c.sendPacket(p)
+	e = c.ws.WriteJSON(p)
 	return
 }
 
@@ -33,7 +34,7 @@ func (c *client) setAttribute(selector, attribute, value string) (e error) {
 	p.Map["Selector"] = selector
 	p.Map["Attribute"] = attribute
 	p.Map["Value"] = value
-	e = c.sendPacket(p)
+	e = c.ws.WriteJSON(p)
 	return
 }
 
@@ -42,9 +43,10 @@ func (c *client) getAttribute(selector, attribute string) (s string, e error) {
 	p := newPacket("getAttribute")
 	p.Map["Selector"] = selector
 	p.Map["Attribute"] = attribute
-	e = c.sendPacket(p)
+	e = c.ws.WriteJSON(p)
 	if e == nil {
-		resp, e := c.readPacket()
+		var resp packet
+		e = c.ws.ReadJSON(&resp)
 		if e == nil {
 			if response, ok := resp.Map["Response"]; ok {
 				s = response
@@ -59,7 +61,7 @@ func (c *client) setProperty(selector, property, value string) (e error) {
 	p := newPacket(property)
 	p.Map["Selector"] = selector
 	p.Map["Value"] = value
-	e = c.sendPacket(p)
+	e = c.ws.WriteJSON(p)
 	return
 }
 
@@ -68,9 +70,10 @@ func (c *client) getProperty(selector, property string) (s string, e error) {
 	p := newPacket("getProperty")
 	p.Map["Selector"] = selector
 	p.Map["Property"] = property
-	e = c.sendPacket(p)
+	e = c.ws.WriteJSON(p)
 	if e == nil {
-		resp, e := c.readPacket()
+		var resp packet
+		e = c.ws.ReadJSON(&resp)
 		if e == nil {
 			if response, ok := resp.Map["Response"]; ok {
 				s = response
@@ -88,7 +91,8 @@ func (c *client) prompt(text string) (s string, e error) {
 		e = c.appendMsg("#msgList", "Enter some input:")
 	}
 	if e == nil {
-		input, e := c.readPacket()
+		var input packet
+		e = c.ws.ReadJSON(&input)
 		if e == nil {
 			if len(input.Args) > 0 {
 				if len(input.Args[0]) > 0 {
@@ -149,6 +153,8 @@ func init() {
 				text, e := c.prompt(strings.Join(pack.Args[1:], " "))
 				if e == nil && len(text) > 0 {
 					e = c.appendMsg("#msgList", "You said: "+text)
+				} else {
+					log.Println(e)
 				}
 			}
 			return
