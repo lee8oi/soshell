@@ -38,13 +38,6 @@ function GetArgs(str) {
 	var re = /`([\S\s]*)`|('([\S \t\r]*)'|"([\S ]*)"|\S+)/g;
 	return str.match(re);
 }
-function WindowSizer() {
-	var h = window.innerHeight;
-	mainHeight = h - 30;
-	listHeight = mainHeight - 80;
-	document.getElementById("main").style.height = mainHeight+"px";
-	document.getElementById("msgList").style.height = listHeight+"px";
-}
 function parseInput(text) {
 	jsonStr = "";
 	args = GetArgs(text);

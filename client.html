@@ -9,21 +9,16 @@
 		<link rel="stylesheet" type="text/css" href="/public/styles.css">
 		{{end}}
 	</head>
-	<body onresize="WindowSizer()" onload="WindowSizer()">
-	<div id="main">
-		{{if .SockUrl}}
-		{{if .Status}}
-		<div id="httpStatus">{{.Status}}</div>
-		{{end}}
-		<div id="msgList"></div>
-		<form id="inputBox" onsubmit="Send(); return false">
-			<input id="msgTxt" type="text" />
-			<input type="submit" id="sendBtn" value="send"/>
-		</form>
-      	
-		{{else}}
-		<h4>There was a problem starting socket client!</h4>
-		{{end}}
-	</div>
+	<body onload="WindowSizer()">
+	{{if .SockUrl}}
+	{{if .Status}}
+	<div id="httpStatus">{{.Status}}</div>
+	{{end}}
+	<div id="msgList"></div>
+	<form id="inputBox" onsubmit="Send(); return false">
+		<input id="msgTxt" type="text" />
+		<input type="submit" id="sendBtn" value="send"/>
+	</form>
+	{{end}}
 	</body>
 </html>
