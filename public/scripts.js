@@ -15,7 +15,7 @@ ws.onopen = function (event) {
 ws.onclose = function(){
 	AppendMsg("#msgList", "Disconnected");
 };
-ws.onmessage = function(e) {
+ws.onmessage = function(event) {
 	var obj = JSON.parse(event.data);
 	if (obj && obj["Type"]) {
 		if (DomMap[obj["Type"]]) {

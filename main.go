@@ -6,7 +6,6 @@ package main
 
 import (
 	"encoding/json"
-	//"errors"
 	"flag"
 	"golang.org/x/net/websocket"
 	"html/template"
@@ -14,7 +13,6 @@ import (
 	"log"
 	"net/http"
 	"time"
-	//"strings"
 )
 
 var addr = flag.String("http", ":8080", "http service address")
@@ -42,10 +40,8 @@ func checkTLS(r *http.Request) string {
 	return "UNSECURED"
 }
 
-/*
-newPacket returns an initialized packet. Any arguments are added to the pack.Args
-and the first arg is used for pack.Type.
-*/
+// newPacket returns an initialized packet. Any arguments are added to the pack.Args
+// and the first arg is used for pack.Type.
 func newPacket(args ...string) (pack packet) {
 	pack.Map = make(map[string]string)
 	if len(args) > 0 {
@@ -76,7 +72,7 @@ func (c *client) sendPacket(pack packet) (e error) {
 	return
 }
 
-// listener listens for incoming packets and passes them to the respective handler function.
+// listener listens for incoming packets and passes them to the respective handlers.
 func (c *client) listener() (e error) {
 	for {
 		if p, e := c.readPacket(); e == nil && len(p.Args) > 0 {

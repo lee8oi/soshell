@@ -12,8 +12,6 @@ interacting with the client HTML/CSS.
 package main
 
 import (
-	//"golang.org/x/net/websocket"
-	//"log"
 	"strings"
 )
 
