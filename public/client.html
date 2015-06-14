@@ -2,6 +2,7 @@
 <html>
 	<head>
 		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1">
 		<title>HELLHAWKS.NET</title>
 		{{if .SockUrl}}
 		<script>var sockUrl = "{{.SockUrl}}";</script>
@@ -9,14 +10,14 @@
 		<link rel="stylesheet" type="text/css" href="/public/styles.css">
 		{{end}}
 	</head>
-	<body onload="WindowSizer()">
+	<body>
 	{{if .SockUrl}}
 	{{if .Status}}
-	<div id="httpStatus">{{.Status}}</div>
+	<div id="status-box">{{.Status}}</div>
 	{{end}}
-	<div id="msgList"></div>
-	<form id="inputBox" onsubmit="Send(); return false">
-		<input id="msgTxt" type="text" />
+	<div id="msg-list"></div>
+	<form id="input-box" onsubmit="Send(); return false">
+		<input id="msg-txt" type="text" />
 		<input type="submit" id="sendBtn" value="send"/>
 	</form>
 	{{end}}

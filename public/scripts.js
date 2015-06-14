@@ -8,21 +8,27 @@ with server-side methods to provide interactive access to client-side html/css.
 */
 
 var prefix = "/";
-var ws = new WebSocket(sockUrl);
-ws.onopen = function (event) {
-	document.getElementById("msgTxt").focus();
-};
-ws.onclose = function(){
-	AppendMsg("#msgList", "Disconnected");
-};
-ws.onmessage = function(event) {
-	var obj = JSON.parse(event.data);
-	if (obj && obj["Type"]) {
-		if (DomMap[obj["Type"]]) {
-			RunDom(obj);
+var ws
+function startSock() {
+	ws = new WebSocket(sockUrl);
+	ws.onopen = function (event) {
+		AppendMsg("#msg-list", "Connected");
+		document.getElementById("msg-txt").focus();
+	};
+	ws.onclose = function(){
+		AppendMsg("#msg-list", "Disconnected");
+		setTimeout(startSock, 3000);
+	};
+	ws.onmessage = function(event) {
+		var obj = JSON.parse(event.data);
+		if (obj && obj["Type"]) {
+			if (DomMap[obj["Type"]]) {
+				RunDom(obj);
+			}
 		}
-	}
-};
+	};
+}
+startSock();
 function AppendMsg(selector, text) {
 	var obj = {};
 	obj["Type"] = "appendElement";
@@ -41,16 +47,19 @@ function GetArgs(str) {
 function parseInput(text) {
 	jsonStr = "";
 	args = GetArgs(text);
-	if (args.length > 0) {
+	if (args ) {
 		jsonStr = {"Type": "CMD", "Args": args};
+		return jsonStr;
 	}
-	return jsonStr;
+	return false
 }
 function Send() {
-	var obj = parseInput(document.getElementById("msgTxt").value);
-	json = JSON.stringify(obj);
-	document.getElementById("msgTxt").value = "";
-	ws.send(json);
+	var obj = parseInput(document.getElementById("msg-txt").value);
+	if (obj) {
+		json = JSON.stringify(obj);
+		document.getElementById("msg-txt").value = "";
+		ws.send(json)
+	}
 	return false
 }
 function Respond(str) {
@@ -61,10 +70,16 @@ function Respond(str) {
 	json = JSON.stringify(resp);
 	ws.send(json)
 }
+var OnClick = {};
+OnClick["removeDecoration"] = function (obj) {
+	obj.onclick = function() {
+		obj.style.textDecoration = "none";
+	}
+}
 function RunDom(obj) {
 	if (obj && obj["Map"]["Selector"]) {
 		var elem = document.querySelector(obj["Map"]["Selector"]);
-		if (elem && obj["Type"] && obj["Type"].length > 0) {
+		if (obj["Type"] && obj["Type"].length > 0) {
 			DomMap[obj["Type"]](elem, obj);
 		}
 	}
@@ -86,9 +101,47 @@ DomMap["appendElement"] = function (elem, obj) {
 			var text = document.createTextNode(obj["Map"]["Text"]);
 	   		node.appendChild(text);
 		}
+		if (obj["Map"]["HTML"]) {
+			node.innerHTML = obj["Map"]["HTML"];
+		}
+		if (obj["Map"]["Href"]) {
+			node.href = obj["Map"]["Href"];
+		}
+		if (obj["Map"]["Target"]) {
+			node.target = obj["Map"]["Target"];
+		}
+		if (obj["Map"]["OnClick"] && OnClick[obj["Map"]["OnClick"]]) {
+			OnClick[obj["Map"]["OnClick"]](node);
+		}
+		if (obj["Map"]["Focus"] === "true") {
+			elem.focus();
+		}
    		elem.appendChild(node);
 		if (obj["Map"]["Scroll"] && obj["Map"]["Scroll"] == "true") {
 			elem.scrollTop = elem.scrollHeight;
+		}
+	}
+}
+DomMap["innerHTML"] = function (elem, obj) {
+	if (obj["Map"]["Value"]) {
+		elem.innerHTML = obj["Map"]["Value"];
+	}
+}
+DomMap["editable"] = function (elem, obj) {
+	if (obj["Map"]["Value"]) {
+		if (obj["Map"]["Value"] === "true") {
+			elem.contentEditable = true;
+		} else {
+			elem.contentEditable = false;
+		}
+	}
+}
+DomMap["focus"] = function (elem, obj) {
+	if (obj["Map"]["Value"]) {
+		if (obj["Map"]["Value"] === "true") {
+			elem.focus();
+		} else {
+			elem.blur();
 		}
 	}
 }
@@ -106,6 +159,16 @@ DomMap["getProperty"] = function (elem, obj) {
 	if (obj["Map"]["Property"]) {
 		Respond(window.getComputedStyle(elem,null).getPropertyValue(obj["Map"]["Property"]));
 	}
+}
+DomMap["exists"] = function (elem, obj) {
+	if (elem) { 
+		Respond("true")
+	} else {
+		Respond("false")
+	}
+}
+DomMap["getHTML"] = function (elem, obj) {
+	Respond(elem.innerHTML);
 }
 DomMap["background"] = function (elem, obj) {
 	if (obj["Map"]["Value"]) {

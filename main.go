@@ -2,23 +2,35 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
+//
 package main
 
 import (
 	"flag"
+	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 	"io"
 	"log"
 	"net/http"
+	"os"
+	"strings"
 	"text/template"
 	"time"
 )
 
-var addr = flag.String("addr", ":8080", "http service address")
-var addrs = flag.String("https", ":8090", "https service address")
-var hostname = flag.String("host", "localhost", "domain or host name")
+const SEP = string(os.PathSeparator)
 
-var clientTempl = template.Must(template.ParseFiles("client.html"))
+var (
+	httpAddr    = flag.String("http", ":8080", "http service address")
+	httpsAddr   = flag.String("https", ":8090", "https service address")
+	hostname    = flag.String("host", "localhost", "domain or host name")
+	work        = flag.String("work", "work", "working directory")
+	users       = flag.String("users", "users", "users root folder")
+	certFile    = flag.String("cert", "cert.pem", "SSL certificate file")
+	keyFile     = flag.String("key", "key.pem", "SSL key file")
+	public      = flag.String("public", "public", "public web directory")
+	clientTempl *template.Template
+)
 
 // packet is an extensible object type transmitted via websocket as JSON.
 type packet struct {
@@ -30,7 +42,8 @@ type packet struct {
 // client is an extensible type representing a single websocket client.
 type client struct {
 	ws            *websocket.Conn
-	user, address string
+	user          user
+	path, address string
 }
 
 // checkTLS returns "SECURED" if TLS handshake is complete or "UNSECURED" if not.
@@ -61,20 +74,27 @@ func (c *client) listener() (e error) {
 	for {
 		var p packet
 		e = c.ws.ReadJSON(&p)
-		if e == nil && len(p.Args) > 0 {
-			if cmd, ok := cmdMap[p.Args[0]]; ok {
+		if e != nil {
+			if e != io.EOF {
+				log.Println(e)
+			}
+			break
+		}
+		if len(p.Args) > 0 && len(p.Args[0]) > 0 {
+			if cmd, exists := cmdMap[strings.ToLower(p.Args[0])]; exists {
 				e = cmd.Handler(c, p)
 			} else {
-				e = c.appendMsg("#msgList", p.Args[0]+": command not found ")
+				e = c.appendMsg("#msg-list", p.Args[0]+": command not found ")
 			}
 		} else {
-			break
+			log.Println("not enough args")
 		}
 		time.Sleep(time.Second)
 	}
 	return
 }
 
+// serveWs serves the websocket and starts the listener on successful connection.
 func serveWs(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" {
 		http.Error(w, "Method not allowed", 405)
@@ -93,8 +113,8 @@ func serveWs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var c = client{ws: ws, address: ws.RemoteAddr().String()}
-	log.Println(c.address, "connected")
-	c.appendMsg("#msgList", "WEBSOCKET "+checkTLS(r))
+	log.Println(c.address, r.URL, "connected")
+	c.innerHTML("#status-box", "<b>"+checkTLS(r)+"</b>")
 	e := c.listener()
 	if e != nil && e != io.EOF {
 		log.Println(e)
@@ -107,6 +127,11 @@ func serveClient(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Not found", 404)
 		return
 	}
+	if r.TLS == nil {
+		log.Println("redirecting")
+		http.Redirect(w, r, "https://"+*hostname+*httpsAddr, 301)
+		return
+	}
 	if r.Method != "GET" {
 		http.Error(w, "Method nod allowed", 405)
 		return
@@ -115,23 +140,54 @@ func serveClient(w http.ResponseWriter, r *http.Request) {
 	type data struct {
 		SockUrl, Status string
 	}
-	sockUrl := "wss://" + *hostname + *addrs + "/ws"
+	sockUrl := "wss://" + *hostname + *httpsAddr + "/ws"
 	clientTempl.Execute(w, data{SockUrl: sockUrl, Status: "HTTP " + checkTLS(r)})
 }
 
-func main() {
+func init() {
 	flag.Parse()
-	http.HandleFunc("/", serveClient)
-	http.HandleFunc("/ws", serveWs)
-	http.Handle("/public/", http.StripPrefix("/public/", http.FileServer(http.Dir("public"))))
+	dirs := map[string]os.FileMode{*work: 0700, *public: 0755, *users: 0700}
+	for path, perm := range dirs {
+		if pathExists(path) {
+			err := os.Chmod(path, perm)
+			if err != nil {
+				log.Fatal(err)
+			}
+		} else {
+			err := os.Mkdir(path, perm)
+			if err != nil {
+				log.Fatal(err)
+			}
+		}
+	}
+	for _, file := range []*string{certFile, keyFile} {
+		_, err := os.Stat(*file)
+		if os.IsNotExist(err) {
+			path := *work + SEP + *file
+			_, err := os.Stat(path)
+			if err != nil {
+				log.Fatal(err)
+			}
+			*file = path
+		}
+	}
+	clientTempl = template.Must(template.ParseFiles(*public + SEP + "client.html"))
+}
+
+func main() {
+	r := mux.NewRouter()
+	r.HandleFunc("/", serveClient)
+	r.HandleFunc("/ws", serveWs)
+	http.Handle("/", r)
+	http.Handle("/public/", http.StripPrefix("/public/", http.FileServer(http.Dir(*public))))
 	go func() {
 		// cert.pem is ssl.crt + *server.ca.pem
-		err := http.ListenAndServeTLS(*addrs, "cert.pem", "key.pem", nil)
+		err := http.ListenAndServeTLS(*httpsAddr, *certFile, *keyFile, nil)
 		if err != nil {
 			log.Fatal("ListenAndServeTLS:", err)
 		}
 	}()
-	err := http.ListenAndServe(*addr, nil)
+	err := http.ListenAndServe(*httpAddr, nil)
 	if err != nil {
 		log.Fatal("ListenAndServe: ", err)
 	}
