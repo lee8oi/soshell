@@ -33,13 +33,6 @@ var (
 	clientTempl *template.Template
 )
 
-// packet is an extensible object type transmitted via websocket as JSON.
-type packet struct {
-	Type string
-	Args []string
-	Map  map[string]string
-}
-
 // client is an extensible type representing a single websocket client.
 type client struct {
 	ws            *websocket.Conn
@@ -66,45 +59,28 @@ func getArgs(b []byte) (s []string) {
 	return
 }
 
-// newPacket returns an initialized packet. Any arguments are added to the pack.Args
-// and the first arg is used for pack.Type.
-func newPacket(args ...string) (pack packet) {
-	pack.Map = make(map[string]string)
-	if len(args) > 0 {
-		if len(args) > 1 {
-			pack.Type = args[0]
-			pack.Args = append(pack.Args, args[1:]...)
-		} else {
-			pack.Type = args[0]
-		}
+// recieve reads a single message and returns it.
+func (c *client) recieve() (b []byte, e error) {
+	t, m, e := c.ws.ReadMessage()
+	if t == 1 {
+		b = m
 	}
 	return
 }
 
-// recieve reads in a single message and returns it as a slice of string arguments
-func (c *client) recieve() ([]byte, error) {
-	_, m, err := c.ws.ReadMessage()
-	if err != nil {
-		return nil, err
-	}
-	return m, nil
-}
-
 // listener listens for incoming packets and passes them to the respective handlers.
 func (c *client) listener() (e error) {
-	defer c.ws.Close()
 	for {
-		var p packet
-		_, m, err := c.ws.ReadMessage()
-		if err != nil {
-			return err
+		b, e := c.recieve()
+		if e != nil {
+			return e
 		}
-		p.Args = getArgs(m)
-		if len(p.Args) > 0 && len(p.Args[0]) > 0 {
-			if cmd, exists := cmdMap[strings.ToLower(p.Args[0])]; exists {
-				e = cmd.Handler(c, p)
+		args := getArgs(b)
+		if len(args) > 0 && len(args[0]) > 0 {
+			if cmd, exists := cmdMap[strings.ToLower(args[0])]; exists {
+				e = cmd.Handler(c, args)
 			} else {
-				e = c.appendMsg("#msg-list", p.Args[0]+": command not found ")
+				e = c.appendMsg("#msg-list", args[0]+": command not found ")
 			}
 		}
 		time.Sleep(time.Second)
@@ -130,8 +106,8 @@ func serveWs(w http.ResponseWriter, r *http.Request) {
 		log.Println(err)
 		return
 	}
-	var c = client{ws: ws, address: ws.RemoteAddr().String()}
-	c.user.Name = "Guest"
+	defer ws.Close()
+	var c = client{ws: ws, address: ws.RemoteAddr().String(), user: user{Name: "Guest"}}
 	log.Println(c.address, r.URL, "connected")
 	c.innerHTML("#status-box", "<b>"+c.user.Name+"</b>")
 	e := c.listener()

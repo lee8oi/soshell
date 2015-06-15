@@ -19,38 +19,51 @@ import (
 	"strings"
 )
 
+// packet is an extensible object type transmitted via websocket as JSON.
+type packet struct {
+	Type string
+	Data map[string]string
+}
+
+// newPacket returns an initialized packet with Type set to t
+func newPacket(t string) (pack packet) {
+	pack.Data = make(map[string]string)
+	pack.Type = t
+	return
+}
+
 // appendMsg appends a msg (div.msg) element to selector.
 func (c *client) appendMsg(selector, text string) (e error) {
 	p := newPacket("appendElement")
-	p.Map["Element"] = "div"
-	p.Map["Selector"] = selector
-	p.Map["Class"] = "msg"
-	p.Map["Text"] = text
-	p.Map["Scroll"] = "true"
+	p.Data["Element"] = "div"
+	p.Data["Selector"] = selector
+	p.Data["Class"] = "msg"
+	p.Data["Text"] = text
+	p.Data["Scroll"] = "true"
 	e = c.ws.WriteJSON(p)
 	return
 }
 
 func (c *client) appendLink(selector, url, text string) (e error) {
 	p := newPacket("appendElement")
-	p.Map["Element"] = "a"
-	p.Map["Selector"] = selector
-	p.Map["Id"] = text
-	p.Map["Class"] = "ip-link"
-	p.Map["Href"] = url
-	p.Map["Text"] = text
-	p.Map["Target"] = "_blank"
-	p.Map["Scroll"] = "true"
-	p.Map["OnClick"] = "removeDecoration"
+	p.Data["Element"] = "a"
+	p.Data["Selector"] = selector
+	p.Data["Id"] = text
+	p.Data["Class"] = "ip-link"
+	p.Data["Href"] = url
+	p.Data["Text"] = text
+	p.Data["Target"] = "_blank"
+	p.Data["Scroll"] = "true"
+	p.Data["OnClick"] = "removeDecoration"
 	e = c.ws.WriteJSON(p)
 	return
 }
 
 func (c *client) appendBreak(selector string) (e error) {
 	p := newPacket("appendElement")
-	p.Map["Element"] = "br"
-	p.Map["Selector"] = selector
-	p.Map["Scroll"] = "true"
+	p.Data["Element"] = "br"
+	p.Data["Selector"] = selector
+	p.Data["Scroll"] = "true"
 	e = c.ws.WriteJSON(p)
 	return
 }
@@ -58,8 +71,8 @@ func (c *client) appendBreak(selector string) (e error) {
 // focus will set the window focus on selector
 func (c *client) focus(selector, value string) (e error) {
 	p := newPacket("focus")
-	p.Map["Selector"] = selector
-	p.Map["Value"] = value
+	p.Data["Selector"] = selector
+	p.Data["Value"] = value
 	e = c.ws.WriteJSON(p)
 	return
 }
@@ -67,7 +80,7 @@ func (c *client) focus(selector, value string) (e error) {
 // exists will check if selector exists
 func (c *client) exists(selector string) (bl bool) {
 	p := newPacket("exists")
-	p.Map["Selector"] = selector
+	p.Data["Selector"] = selector
 	e := c.ws.WriteJSON(p)
 	if e == nil {
 		b, e := c.recieve()
@@ -81,8 +94,8 @@ func (c *client) exists(selector string) (bl bool) {
 // innerHTML will set the html content of selector
 func (c *client) innerHTML(selector, value string) (e error) {
 	p := newPacket("innerHTML")
-	p.Map["Selector"] = selector
-	p.Map["Value"] = value
+	p.Data["Selector"] = selector
+	p.Data["Value"] = value
 	e = c.ws.WriteJSON(p)
 	return
 }
@@ -91,7 +104,7 @@ func (c *client) innerHTML(selector, value string) (e error) {
 func (c *client) getHTML(selector string) (s string, e error) {
 	if c.exists(selector) {
 		p := newPacket("getHTML")
-		p.Map["Selector"] = selector
+		p.Data["Selector"] = selector
 		e = c.ws.WriteJSON(p)
 		if e == nil {
 			b, e := c.recieve()
@@ -108,9 +121,9 @@ func (c *client) getHTML(selector string) (s string, e error) {
 // setAttribute sets the specified attribute for selector.
 func (c *client) setAttribute(selector, attribute, value string) (e error) {
 	p := newPacket("setAttribute")
-	p.Map["Selector"] = selector
-	p.Map["Attribute"] = attribute
-	p.Map["Value"] = value
+	p.Data["Selector"] = selector
+	p.Data["Attribute"] = attribute
+	p.Data["Value"] = value
 	e = c.ws.WriteJSON(p)
 	return
 }
@@ -118,8 +131,8 @@ func (c *client) setAttribute(selector, attribute, value string) (e error) {
 // getAttribute returns the current value of an attribute of selector.
 func (c *client) getAttribute(selector, attribute string) (s string, e error) {
 	p := newPacket("getAttribute")
-	p.Map["Selector"] = selector
-	p.Map["Attribute"] = attribute
+	p.Data["Selector"] = selector
+	p.Data["Attribute"] = attribute
 	e = c.ws.WriteJSON(p)
 	if e == nil {
 		b, e := c.recieve()
@@ -133,8 +146,8 @@ func (c *client) getAttribute(selector, attribute string) (s string, e error) {
 // setProperty sets the specified CSS property of selector.
 func (c *client) setProperty(selector, property, value string) (e error) {
 	p := newPacket(property)
-	p.Map["Selector"] = selector
-	p.Map["Value"] = value
+	p.Data["Selector"] = selector
+	p.Data["Value"] = value
 	e = c.ws.WriteJSON(p)
 	return
 }
@@ -142,16 +155,13 @@ func (c *client) setProperty(selector, property, value string) (e error) {
 // getProperty returns the current (computed) value for the specified CSS property of selector.
 func (c *client) getProperty(selector, property string) (s string, e error) {
 	p := newPacket("getProperty")
-	p.Map["Selector"] = selector
-	p.Map["Property"] = property
+	p.Data["Selector"] = selector
+	p.Data["Property"] = property
 	e = c.ws.WriteJSON(p)
 	if e == nil {
-		var resp packet
-		e = c.ws.ReadJSON(&resp)
+		b, e := c.recieve()
 		if e == nil {
-			if response, ok := resp.Map["Response"]; ok {
-				s = response
-			}
+			s = string(b)
 		}
 	}
 	return
@@ -160,8 +170,8 @@ func (c *client) getProperty(selector, property string) (s string, e error) {
 // editable sets the editable property of the element
 func (c *client) editable(selector, value string) (e error) {
 	p := newPacket("editable")
-	p.Map["Selector"] = selector
-	p.Map["Value"] = value
+	p.Data["Selector"] = selector
+	p.Data["Value"] = value
 	e = c.ws.WriteJSON(p)
 	return
 }
@@ -173,8 +183,10 @@ func (c *client) prompt(text string) (s string, e error) {
 	} else {
 		e = c.appendMsg("#msg-list", "Enter some input:")
 	}
-	_, b, e := c.ws.ReadMessage()
-	s = string(b)
+	b, e := c.recieve()
+	if e == nil {
+		s = string(b)
+	}
 	return
 }
 
@@ -193,7 +205,7 @@ func (c *client) promptSecure(selector, text string) (s string, e error) {
 
 type command struct {
 	Desc    string
-	Handler func(*client, packet) error
+	Handler func(*client, []string) error
 }
 
 var cmdMap = make(map[string]command)
@@ -201,19 +213,19 @@ var cmdMap = make(map[string]command)
 func init() {
 	cmdMap["help"] = command{
 		Desc: "help returns help information about available commands.",
-		Handler: func(c *client, pack packet) (e error) {
-			if len(pack.Args) > 0 {
-				if len(pack.Args) == 1 {
+		Handler: func(c *client, args []string) (e error) {
+			if len(args) > 0 {
+				if len(args) == 1 {
 					cmds := ""
 					for k, _ := range cmdMap {
 						cmds += " " + k
 					}
 					e = c.appendMsg("#msg-list", "Available commands:"+cmds)
 				} else {
-					if cmd, ok := cmdMap[pack.Args[1]]; ok {
+					if cmd, ok := cmdMap[args[1]]; ok {
 						e = c.appendMsg("#msg-list", cmd.Desc)
 					} else {
-						e = c.appendMsg("#msg-list", "Command not available: "+pack.Args[1])
+						e = c.appendMsg("#msg-list", "Command not available: "+args[1])
 					}
 				}
 			}
@@ -222,9 +234,9 @@ func init() {
 	}
 	//	cmdMap["prompt"] = command{
 	//		Desc: "prompt is a testing command that prompts the user for input.",
-	//		Handler: func(c *client, pack packet) (e error) {
-	//			if len(pack.Args) > 0 {
-	//				text, e := c.prompt(strings.Join(pack.Args[1:], " "))
+	//		Handler: func(c *client, args []string) (e error) {
+	//			if len(args) > 0 {
+	//				text, e := c.prompt(strings.Join(args[1:], " "))
 	//				if e == nil && len(text) > 0 {
 	//					e = c.appendMsg("#msg-list", "You said: "+text)
 	//				} else {
@@ -236,8 +248,8 @@ func init() {
 	//	}
 	cmdMap["clear"] = command{
 		Desc: "clear the current terminal's content",
-		Handler: func(c *client, pack packet) (e error) {
-			if len(pack.Args) > 0 {
+		Handler: func(c *client, args []string) (e error) {
+			if len(args) > 0 {
 				c.innerHTML("#msg-list", " ")
 			}
 			return
@@ -245,14 +257,14 @@ func init() {
 	}
 	cmdMap["editor"] = command{
 		Desc: "editor opens a simple editable box in the terminal",
-		Handler: func(c *client, pack packet) (e error) {
-			if len(pack.Args) > 0 {
+		Handler: func(c *client, args []string) (e error) {
+			if len(args) > 0 {
 				c.appendMsg("#msg-list", "Editor box:")
 				p := newPacket("appendElement")
-				p.Map["Element"] = "div"
-				p.Map["Selector"] = "#msg-list"
-				p.Map["Id"] = "editor"
-				p.Map["Focus"] = "true"
+				p.Data["Element"] = "div"
+				p.Data["Selector"] = "#msg-list"
+				p.Data["Id"] = "editor"
+				p.Data["Focus"] = "true"
 				e = c.ws.WriteJSON(p)
 				c.editable("#msg-list #editor", "true")
 				c.setProperty("#msg-list #editor", "border", "1px solid #fff")
@@ -263,8 +275,8 @@ func init() {
 	}
 	cmdMap["ipscraper"] = command{
 		Desc: "scrapes unique ip addresses from editor box text",
-		Handler: func(c *client, pack packet) (e error) {
-			if len(pack.Args) > 0 {
+		Handler: func(c *client, args []string) (e error) {
+			if len(args) > 0 {
 				if c.exists("#msg-list #editor") {
 					data, e := c.getHTML("#msg-list #editor")
 					if e == nil {
@@ -297,12 +309,12 @@ func init() {
 	}
 	cmdMap["login"] = command{
 		Desc: "login lets you log into a registered user account.",
-		Handler: func(c *client, pack packet) (e error) {
-			if len(pack.Args) > 0 {
-				if len(pack.Args) == 1 {
+		Handler: func(c *client, args []string) (e error) {
+			if len(args) > 0 {
+				if len(args) == 1 {
 					e = c.appendMsg("#msg-list", "Usage: login <name>")
 				} else {
-					name := pack.Args[1]
+					name := args[1]
 					if isName(name) {
 						path := *users + SEP + indexPath([]byte(name))
 						if pathExists(path) {
@@ -328,12 +340,12 @@ func init() {
 	}
 	cmdMap["register"] = command{
 		Desc: "register a user account",
-		Handler: func(c *client, pack packet) (e error) {
-			if len(pack.Args) > 1 {
-				name := pack.Args[1]
+		Handler: func(c *client, args []string) (e error) {
+			if len(args) > 1 {
+				name := args[1]
 				if isName(name) {
 					email, e := c.prompt("Enter your email address")
-					if e == nil && isEmail(string(email)) {
+					if e == nil && isEmail(email) {
 						pass1, e1 := c.promptSecure("#msg-txt", "Enter a good password")
 						if e1 == nil {
 							pass2, e2 := c.promptSecure("#msg-txt", "Re-enter your password")

@@ -32,12 +32,12 @@ startSock();
 function AppendMsg(selector, text) {
 	var obj = {};
 	obj["Type"] = "appendElement";
-	obj["Map"] = {};
-	obj["Map"]["Element"] = "div";
-	obj["Map"]["Selector"] = selector;
-	obj["Map"]["Class"] = "msg";
-	obj["Map"]["Text"] = text;
-	obj["Map"]["Scroll"] = "true";
+	obj.Data = {};
+	obj.Data.Element = "div";
+	obj.Data.Selector = selector;
+	obj.Data.Class = "msg";
+	obj.Data.Text = text;
+	obj.Data.Scroll = "true";
 	RunDom(obj);
 }
 function Send() {
@@ -53,59 +53,59 @@ OnClick["removeDecoration"] = function (obj) {
 	}
 }
 function RunDom(obj) {
-	if (obj && obj["Map"]["Selector"]) {
-		var elem = document.querySelector(obj["Map"]["Selector"]);
-		if (obj["Type"] && obj["Type"].length > 0) {
-			DomMap[obj["Type"]](elem, obj);
+	if (obj && obj.Data.Selector) {
+		var elem = document.querySelector(obj.Data.Selector);
+		if (obj.Type && obj.Type.length > 0) {
+			DomMap[obj.Type](elem, obj);
 		}
 	}
 }
 var DomMap = {};
 DomMap["appendElement"] = function (elem, obj) {
-	if (obj["Map"]["Element"]) {
-		var node = document.createElement(obj["Map"]["Element"]);
-		if (obj["Map"]["Class"]) {
-			node.className = obj["Map"]["Class"];
+	if (obj.Data.Element) {
+		var node = document.createElement(obj.Data.Element);
+		if (obj.Data.Class) {
+			node.className = obj.Data.Class;
 		}
-		if (obj["Map"]["Id"]) {
-			node.id = obj["Map"]["Id"];
+		if (obj.Data.Id) {
+			node.id = obj.Data.Id;
 		}
-		if (obj["Map"]["Attribute"] && obj["Map"]["Value"]) {
-			node.setAttribute(obj["Map"]["Attribute"], obj["Map"]["Value"]);
+		if (obj.Data.Attribute && obj.Data.Value) {
+			node.setAttribute(obj.Data.Attribute, obj.Data.Value);
 		}
-		if (obj["Map"]["Text"]) {
-			var text = document.createTextNode(obj["Map"]["Text"]);
+		if (obj.Data.Text) {
+			var text = document.createTextNode(obj.Data.Text);
 	   		node.appendChild(text);
 		}
-		if (obj["Map"]["HTML"]) {
-			node.innerHTML = obj["Map"]["HTML"];
+		if (obj.Data.HTML) {
+			node.innerHTML = obj.Data.HTML;
 		}
-		if (obj["Map"]["Href"]) {
-			node.href = obj["Map"]["Href"];
+		if (obj.Data.Href) {
+			node.href = obj.Data.Href;
 		}
-		if (obj["Map"]["Target"]) {
-			node.target = obj["Map"]["Target"];
+		if (obj.Data.Target) {
+			node.target = obj.Data.Target;
 		}
-		if (obj["Map"]["OnClick"] && OnClick[obj["Map"]["OnClick"]]) {
-			OnClick[obj["Map"]["OnClick"]](node);
+		if (obj.Data.OnClick && OnClick[obj.Data.OnClick]) {
+			OnClick[obj.Data.OnClick](node);
 		}
-		if (obj["Map"]["Focus"] === "true") {
+		if (obj.Data.Focus === "true") {
 			elem.focus();
 		}
    		elem.appendChild(node);
-		if (obj["Map"]["Scroll"] && obj["Map"]["Scroll"] == "true") {
+		if (obj.Data.Scroll && obj.Data.Scroll == "true") {
 			elem.scrollTop = elem.scrollHeight;
 		}
 	}
 }
 DomMap["innerHTML"] = function (elem, obj) {
-	if (obj["Map"]["Value"]) {
-		elem.innerHTML = obj["Map"]["Value"];
+	if (obj.Data.Value) {
+		elem.innerHTML = obj.Data.Value;
 	}
 }
 DomMap["editable"] = function (elem, obj) {
-	if (obj["Map"]["Value"]) {
-		if (obj["Map"]["Value"] === "true") {
+	if (obj.Data.Value) {
+		if (obj.Data.Value === "true") {
 			elem.contentEditable = true;
 		} else {
 			elem.contentEditable = false;
@@ -113,8 +113,8 @@ DomMap["editable"] = function (elem, obj) {
 	}
 }
 DomMap["focus"] = function (elem, obj) {
-	if (obj["Map"]["Value"]) {
-		if (obj["Map"]["Value"] === "true") {
+	if (obj.Data.Value) {
+		if (obj.Data.Value === "true") {
 			elem.focus();
 		} else {
 			elem.blur();
@@ -122,18 +122,18 @@ DomMap["focus"] = function (elem, obj) {
 	}
 }
 DomMap["setAttribute"] = function (elem, obj) {
-	if (obj["Map"]["Attribute"] && obj["Map"]["Value"]) {
-		elem.setAttribute(obj["Map"]["Attribute"], obj["Map"]["Value"]);
+	if (obj.Data.Attribute && obj.Data.Value) {
+		elem.setAttribute(obj.Data.Attribute, obj.Data.Value);
 	}
 }
 DomMap["getAttribute"] = function (elem, obj) {
-	if (obj["Map"]["Attribute"]) {
-		ws.send(elem.getAttribute(obj["Map"]["Attribute"]));
+	if (obj.Data.Attribute) {
+		ws.send(elem.getAttribute(obj.Data.Attribute));
 	}
 }
 DomMap["getProperty"] = function (elem, obj) {
-	if (obj["Map"]["Property"]) {
-		ws.send(window.getComputedStyle(elem,null).getPropertyValue(obj["Map"]["Property"]));
+	if (obj.Data.Property) {
+		ws.send(window.getComputedStyle(elem,null).getPropertyValue(obj.Data.Property));
 	}
 }
 DomMap["exists"] = function (elem, obj) {
@@ -147,27 +147,27 @@ DomMap["getHTML"] = function (elem, obj) {
 	ws.send(elem.innerHTML);
 }
 DomMap["background"] = function (elem, obj) {
-	if (obj["Map"]["Value"]) {
-		elem.style.background = obj["Map"]["Value"];
+	if (obj.Data.Value) {
+		elem.style.background = obj.Data.Value;
 	}
 }
 DomMap["background-color"] = function (elem, obj) {
-	if (obj["Map"]["Value"]) {
-		elem.style.backgroundColor = obj["Map"]["Value"];
+	if (obj.Data.Value) {
+		elem.style.backgroundColor = obj.Data.Value;
 	}
 }
 DomMap["color"] = function (elem, obj) {
-	if (obj["Map"]["Value"]) {
-		elem.style.color = obj["Map"]["Value"];
+	if (obj.Data.Value) {
+		elem.style.color = obj.Data.Value;
 	}
 }
 DomMap["border"] = function (elem, obj) {
-	if (obj["Map"]["Value"]) {
-		elem.style.border = obj["Map"]["Value"];
+	if (obj.Data.Value) {
+		elem.style.border = obj.Data.Value;
 	}
 }
 DomMap["border-color"] = function (elem, obj) {
-	if (obj["Map"]["Value"]) {
-		elem.style.borderColor = obj["Map"]["Value"];
+	if (obj.Data.Value) {
+		elem.style.borderColor = obj.Data.Value;
 	}
 }
