@@ -14,9 +14,7 @@ import (
 	"net/http"
 	"os"
 	"regexp"
-	"strings"
 	"text/template"
-	"time"
 )
 
 const SEP = string(os.PathSeparator)
@@ -33,13 +31,6 @@ var (
 	clientTempl *template.Template
 )
 
-// client is an extensible type representing a single websocket client.
-type client struct {
-	ws            *websocket.Conn
-	user          user
-	path, address string
-}
-
 // isTLS checks for TLS and returns true if handshake is complete or false if not.
 func isTLS(r *http.Request) bool {
 	if r.TLS != nil && r.TLS.HandshakeComplete {
@@ -55,35 +46,6 @@ func getArgs(b []byte) (s []string) {
 	args := re.FindAllSubmatch(b, -1)
 	for _, val := range args {
 		s = append(s, string(val[0]))
-	}
-	return
-}
-
-// recieve reads a single message and returns it.
-func (c *client) recieve() (b []byte, e error) {
-	t, m, e := c.ws.ReadMessage()
-	if t == 1 {
-		b = m
-	}
-	return
-}
-
-// listener listens for incoming packets and passes them to the respective handlers.
-func (c *client) listener() (e error) {
-	for {
-		b, e := c.recieve()
-		if e != nil {
-			return e
-		}
-		args := getArgs(b)
-		if len(args) > 0 && len(args[0]) > 0 {
-			if cmd, exists := cmdMap[strings.ToLower(args[0])]; exists {
-				e = cmd.Handler(c, args)
-			} else {
-				e = c.appendMsg("#msg-list", args[0]+": command not found ")
-			}
-		}
-		time.Sleep(time.Second)
 	}
 	return
 }
