@@ -7,7 +7,6 @@ This file contains the websocket functions along with the DomMap that is used in
 with server-side methods to provide interactive access to client-side html/css.
 */
 
-var prefix = "/";
 var ws
 function startSock() {
 	ws = new WebSocket(sockUrl);
