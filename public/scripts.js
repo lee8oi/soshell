@@ -40,35 +40,11 @@ function AppendMsg(selector, text) {
 	obj["Map"]["Scroll"] = "true";
 	RunDom(obj);
 }
-function GetArgs(str) {
-	var re = /`([\S\s]*)`|('([\S \t\r]*)'|"([\S ]*)"|\S+)/g;
-	return str.match(re);
-}
-function parseInput(text) {
-	jsonStr = "";
-	args = GetArgs(text);
-	if (args ) {
-		jsonStr = {"Type": "CMD", "Args": args};
-		return jsonStr;
-	}
-	return false
-}
 function Send() {
-	var obj = parseInput(document.getElementById("msg-txt").value);
-	if (obj) {
-		json = JSON.stringify(obj);
-		document.getElementById("msg-txt").value = "";
-		ws.send(json)
-	}
+	var elem = document.getElementById("msg-txt")
+	ws.send(elem.value);
+	elem.value = "";
 	return false
-}
-function Respond(str) {
-	var resp = {};
-	resp["Type"] = "RESP";
-	resp["Map"] = {};
-	resp["Map"]["Response"] = str;
-	json = JSON.stringify(resp);
-	ws.send(json)
 }
 var OnClick = {};
 OnClick["removeDecoration"] = function (obj) {
@@ -152,23 +128,23 @@ DomMap["setAttribute"] = function (elem, obj) {
 }
 DomMap["getAttribute"] = function (elem, obj) {
 	if (obj["Map"]["Attribute"]) {
-		Respond(elem.getAttribute(obj["Map"]["Attribute"]));
+		ws.send(elem.getAttribute(obj["Map"]["Attribute"]));
 	}
 }
 DomMap["getProperty"] = function (elem, obj) {
 	if (obj["Map"]["Property"]) {
-		Respond(window.getComputedStyle(elem,null).getPropertyValue(obj["Map"]["Property"]));
+		ws.send(window.getComputedStyle(elem,null).getPropertyValue(obj["Map"]["Property"]));
 	}
 }
 DomMap["exists"] = function (elem, obj) {
 	if (elem) { 
-		Respond("true")
+		ws.send("true")
 	} else {
-		Respond("false")
+		ws.send("false")
 	}
 }
 DomMap["getHTML"] = function (elem, obj) {
-	Respond(elem.innerHTML);
+	ws.send(elem.innerHTML);
 }
 DomMap["background"] = function (elem, obj) {
 	if (obj["Map"]["Value"]) {

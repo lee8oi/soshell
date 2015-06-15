@@ -65,24 +65,17 @@ func (c *client) focus(selector, value string) (e error) {
 }
 
 // exists will check if selector exists
-func (c *client) exists(selector string) (b bool) {
+func (c *client) exists(selector string) (bl bool) {
 	p := newPacket("exists")
 	p.Map["Selector"] = selector
 	e := c.ws.WriteJSON(p)
 	if e == nil {
-		var resp packet
-		e = c.ws.ReadJSON(&resp)
-		if e == nil {
-			if response, ok := resp.Map["Response"]; ok {
-				if response == "true" {
-					return true
-				} else {
-					return false
-				}
-			}
+		b, e := c.recieve()
+		if e == nil && string(b) == "true" {
+			return true
 		}
 	}
-	return
+	return false
 }
 
 // innerHTML will set the html content of selector
@@ -101,12 +94,9 @@ func (c *client) getHTML(selector string) (s string, e error) {
 		p.Map["Selector"] = selector
 		e = c.ws.WriteJSON(p)
 		if e == nil {
-			var resp packet
-			e = c.ws.ReadJSON(&resp)
+			b, e := c.recieve()
 			if e == nil {
-				if response, ok := resp.Map["Response"]; ok {
-					s = response
-				}
+				s = string(b)
 			}
 		}
 	} else {
@@ -132,12 +122,9 @@ func (c *client) getAttribute(selector, attribute string) (s string, e error) {
 	p.Map["Attribute"] = attribute
 	e = c.ws.WriteJSON(p)
 	if e == nil {
-		var resp packet
-		e = c.ws.ReadJSON(&resp)
+		b, e := c.recieve()
 		if e == nil {
-			if response, ok := resp.Map["Response"]; ok {
-				s = response
-			}
+			s = string(b)
 		}
 	}
 	return
@@ -186,28 +173,19 @@ func (c *client) prompt(text string) (s string, e error) {
 	} else {
 		e = c.appendMsg("#msg-list", "Enter some input:")
 	}
-	if e == nil {
-		var input packet
-		e = c.ws.ReadJSON(&input)
-		if e == nil {
-			if len(input.Args) > 0 {
-				if len(input.Args[0]) > 0 {
-					s = strings.Join(input.Args, " ")
-				}
-			}
-		}
-	}
+	_, b, e := c.ws.ReadMessage()
+	s = string(b)
 	return
 }
 
 // promptSecure uses prompt() but changes the selector/input box type to & from password for security.
-func (c *client) promptSecure(selector, text string) (input string, e error) {
+func (c *client) promptSecure(selector, text string) (s string, e error) {
 	attr, e := c.getAttribute(selector, "type")
 	if e == nil {
 		defer c.setAttribute(selector, "type", attr)
 		e = c.setAttribute(selector, "type", "password")
 		if e == nil {
-			input, e = c.prompt(text)
+			s, e = c.prompt(text)
 		}
 	}
 	return
@@ -296,12 +274,13 @@ func init() {
 						for {
 							line, _, err := r.ReadLine()
 							if err == nil {
-								items := re.FindAllStringSubmatch(string(line), -1)
-								for _, val := range items {
-									if _, exists := ipMap[val[0]]; exists == false {
-										c.appendLink("#msg-list", "http://hackerexperience.com/internet?ip="+val[0], val[0])
+								items := re.FindAllSubmatch(line, -1)
+								for _, v := range items {
+									ip := string(v[0])
+									if _, exists := ipMap[string(ip)]; exists == false {
+										c.appendLink("#msg-list", "http://hackerexperience.com/internet?ip="+ip, ip)
 										c.appendBreak("#msg-list")
-										ipMap[val[0]] = true
+										ipMap[string(ip)] = true
 									}
 								}
 							} else {
@@ -354,7 +333,7 @@ func init() {
 				name := pack.Args[1]
 				if isName(name) {
 					email, e := c.prompt("Enter your email address")
-					if e == nil && isEmail(email) {
+					if e == nil && isEmail(string(email)) {
 						pass1, e1 := c.promptSecure("#msg-txt", "Enter a good password")
 						if e1 == nil {
 							pass2, e2 := c.promptSecure("#msg-txt", "Re-enter your password")

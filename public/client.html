@@ -12,9 +12,7 @@
 	</head>
 	<body>
 	{{if .SockUrl}}
-	{{if .Status}}
-	<div id="status-box">{{.Status}}</div>
-	{{end}}
+	<div id="status-box"></div>
 	<div id="msg-list"></div>
 	<form id="input-box" onsubmit="Send(); return false">
 		<input id="msg-txt" type="text" />

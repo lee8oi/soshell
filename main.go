@@ -13,6 +13,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"regexp"
 	"strings"
 	"text/template"
 	"time"
@@ -46,12 +47,23 @@ type client struct {
 	path, address string
 }
 
-// checkTLS returns "SECURED" if TLS handshake is complete or "UNSECURED" if not.
-func checkTLS(r *http.Request) string {
+// isTLS checks for TLS and returns true if handshake is complete or false if not.
+func isTLS(r *http.Request) bool {
 	if r.TLS != nil && r.TLS.HandshakeComplete {
-		return "SECURED"
+		return true
 	}
-	return "UNSECURED"
+	return false
+}
+
+// getArgs splits a slice of bytes into a slice of string arguments.
+//Anything in '', "", or `` are consider a single argument (including spaces).
+func getArgs(b []byte) (s []string) {
+	re := regexp.MustCompile("`([\\S\\s]*)`|('([\\S \\t\\r]*)'|\"([\\S ]*)\"|\\S+)")
+	args := re.FindAllSubmatch(b, -1)
+	for _, val := range args {
+		s = append(s, string(val[0]))
+	}
+	return
 }
 
 // newPacket returns an initialized packet. Any arguments are added to the pack.Args
@@ -69,25 +81,31 @@ func newPacket(args ...string) (pack packet) {
 	return
 }
 
+// recieve reads in a single message and returns it as a slice of string arguments
+func (c *client) recieve() ([]byte, error) {
+	_, m, err := c.ws.ReadMessage()
+	if err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // listener listens for incoming packets and passes them to the respective handlers.
 func (c *client) listener() (e error) {
+	defer c.ws.Close()
 	for {
 		var p packet
-		e = c.ws.ReadJSON(&p)
-		if e != nil {
-			if e != io.EOF {
-				log.Println(e)
-			}
-			break
+		_, m, err := c.ws.ReadMessage()
+		if err != nil {
+			return err
 		}
+		p.Args = getArgs(m)
 		if len(p.Args) > 0 && len(p.Args[0]) > 0 {
 			if cmd, exists := cmdMap[strings.ToLower(p.Args[0])]; exists {
 				e = cmd.Handler(c, p)
 			} else {
 				e = c.appendMsg("#msg-list", p.Args[0]+": command not found ")
 			}
-		} else {
-			log.Println("not enough args")
 		}
 		time.Sleep(time.Second)
 	}
@@ -113,8 +131,9 @@ func serveWs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var c = client{ws: ws, address: ws.RemoteAddr().String()}
+	c.user.Name = "Guest"
 	log.Println(c.address, r.URL, "connected")
-	c.innerHTML("#status-box", "<b>"+checkTLS(r)+"</b>")
+	c.innerHTML("#status-box", "<b>"+c.user.Name+"</b>")
 	e := c.listener()
 	if e != nil && e != io.EOF {
 		log.Println(e)
@@ -141,7 +160,7 @@ func serveClient(w http.ResponseWriter, r *http.Request) {
 		SockUrl, Status string
 	}
 	sockUrl := "wss://" + *hostname + *httpsAddr + "/ws"
-	clientTempl.Execute(w, data{SockUrl: sockUrl, Status: "HTTP " + checkTLS(r)})
+	clientTempl.Execute(w, data{SockUrl: sockUrl})
 }
 
 func init() {
