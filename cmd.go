@@ -11,8 +11,6 @@ interacting with the client HTML/CSS.
 //
 package main
 
-import ()
-
 type command struct {
 	Desc    string
 	Handler func(*client, []string) error
@@ -51,7 +49,6 @@ func init() {
 			return
 		},
 	}
-
 	cmdMap["login"] = command{
 		Desc: "login lets you log into a registered user account.",
 		Handler: func(c *client, args []string) (e error) {
