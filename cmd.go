@@ -12,11 +12,8 @@ interacting with the client HTML/CSS.
 package main
 
 import (
-	"bufio"
 	"errors"
 	//"log"
-	"regexp"
-	"strings"
 )
 
 // packet is an extensible object type transmitted via websocket as JSON.
@@ -255,58 +252,7 @@ func init() {
 			return
 		},
 	}
-	cmdMap["editor"] = command{
-		Desc: "editor opens a simple editable box in the terminal",
-		Handler: func(c *client, args []string) (e error) {
-			if len(args) > 0 {
-				c.appendMsg("#msg-list", "Editor box:")
-				p := newPacket("appendElement")
-				p.Data["Element"] = "div"
-				p.Data["Selector"] = "#msg-list"
-				p.Data["Id"] = "editor"
-				p.Data["Focus"] = "true"
-				e = c.ws.WriteJSON(p)
-				c.editable("#msg-list #editor", "true")
-				c.setProperty("#msg-list #editor", "border", "1px solid #fff")
-				c.focus("#msg-list #editor", "true")
-			}
-			return
-		},
-	}
-	cmdMap["ipscraper"] = command{
-		Desc: "scrapes unique ip addresses from editor box text",
-		Handler: func(c *client, args []string) (e error) {
-			if len(args) > 0 {
-				if c.exists("#msg-list #editor") {
-					data, e := c.getHTML("#msg-list #editor")
-					if e == nil {
-						ipMap := make(map[string]bool)
-						re := regexp.MustCompile("\\b\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\b")
-						r := bufio.NewReader(strings.NewReader(data))
-						for {
-							line, _, err := r.ReadLine()
-							if err == nil {
-								items := re.FindAllSubmatch(line, -1)
-								for _, v := range items {
-									ip := string(v[0])
-									if _, exists := ipMap[string(ip)]; exists == false {
-										c.appendLink("#msg-list", "http://hackerexperience.com/internet?ip="+ip, ip)
-										c.appendBreak("#msg-list")
-										ipMap[string(ip)] = true
-									}
-								}
-							} else {
-								break
-							}
-						}
-					}
-				} else {
-					c.appendMsg("#msg-list", "You do not have an editor box open")
-				}
-			}
-			return
-		},
-	}
+
 	cmdMap["login"] = command{
 		Desc: "login lets you log into a registered user account.",
 		Handler: func(c *client, args []string) (e error) {
