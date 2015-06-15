@@ -66,7 +66,10 @@ func init() {
 								if e != nil {
 									e = c.appendMsg("#msg-list", "Login failed")
 								} else {
-									e = c.appendMsg("#msg-list", "Welcome back, "+c.user.Name)
+									e = c.innerHTML("#status-box", "<b>"+c.user.Name+"</b>")
+									if e == nil {
+										e = c.appendMsg("#msg-list", "Welcome back, "+c.user.Name)
+									}
 								}
 							}
 						} else {
