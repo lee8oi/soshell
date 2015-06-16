@@ -46,7 +46,3 @@ func (u *user) save(name, pass string) error {
 	}
 	return saveObject(u, path+SEP+"user", pass)
 }
-
-func init() {
-
-}
