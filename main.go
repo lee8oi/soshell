@@ -79,7 +79,9 @@ func serveWs(w http.ResponseWriter, r *http.Request) {
 	log.Println(c.address, "disconnected")
 }
 
+// serveClient is the handler that serves the client html on initial connection.
 func serveClient(w http.ResponseWriter, r *http.Request) {
+	log.Println(r.RemoteAddr, r.Referer(), r.URL, "connecting")
 	if r.URL.Path != "/" {
 		http.Error(w, "Not found", 404)
 		return
