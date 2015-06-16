@@ -2,6 +2,12 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
+/*
+The client object represents a single websocket client. It includes methods for
+sending & recieving messages as well as methods for interacting with clientside
+HTML & CSS via JavaScript.
+*/
+
 //
 package main
 
