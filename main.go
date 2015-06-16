@@ -40,7 +40,7 @@ func isTLS(r *http.Request) bool {
 }
 
 // getArgs splits a slice of bytes into a slice of string arguments.
-//Anything in '', "", or `` are consider a single argument (including spaces).
+// Anything in '', "", or `` are consider a single argument (including spaces).
 func getArgs(b []byte) (s []string) {
 	re := regexp.MustCompile("`([\\S\\s]*)`|('([\\S \\t\\r]*)'|\"([\\S ]*)\"|\\S+)")
 	args := re.FindAllSubmatch(b, -1)
