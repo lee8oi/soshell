@@ -61,6 +61,33 @@ func (c *client) listener() (e error) {
 	return
 }
 
+// prompt sends the specified text as a msg and returns user input as a string.
+func (c *client) prompt(text string) (s string, e error) {
+	if len(text) > 0 {
+		e = c.appendMsg("#msg-list", text)
+	} else {
+		e = c.appendMsg("#msg-list", "Enter some input:")
+	}
+	b, e := c.recieve()
+	if e == nil {
+		s = string(b)
+	}
+	return
+}
+
+// promptSecure uses prompt() but changes the selector/input box type to & from password for security.
+func (c *client) promptSecure(selector, text string) (s string, e error) {
+	attr, e := c.getAttribute(selector, "type")
+	if e == nil {
+		defer c.setAttribute(selector, "type", attr)
+		e = c.setAttribute(selector, "type", "password")
+		if e == nil {
+			s, e = c.prompt(text)
+		}
+	}
+	return
+}
+
 // appendMsg appends a msg (div.msg) element to selector.
 func (c *client) appendMsg(selector, text string) (e error) {
 	p := newPacket("appendElement")
@@ -202,32 +229,5 @@ func (c *client) editable(selector, value string) (e error) {
 	p.Data["Selector"] = selector
 	p.Data["Value"] = value
 	e = c.ws.WriteJSON(p)
-	return
-}
-
-// prompt sends the specified text as a msg and returns user input as a string.
-func (c *client) prompt(text string) (s string, e error) {
-	if len(text) > 0 {
-		e = c.appendMsg("#msg-list", text)
-	} else {
-		e = c.appendMsg("#msg-list", "Enter some input:")
-	}
-	b, e := c.recieve()
-	if e == nil {
-		s = string(b)
-	}
-	return
-}
-
-// promptSecure uses prompt() but changes the selector/input box type to & from password for security.
-func (c *client) promptSecure(selector, text string) (s string, e error) {
-	attr, e := c.getAttribute(selector, "type")
-	if e == nil {
-		defer c.setAttribute(selector, "type", attr)
-		e = c.setAttribute(selector, "type", "password")
-		if e == nil {
-			s, e = c.prompt(text)
-		}
-	}
 	return
 }
