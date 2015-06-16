@@ -2,6 +2,18 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
+/*
+The index system is a filesystem based data storage that uses a directory tree
+approach in which index 'keys' (typically a name or word) are converted into paths
+in the directory tree. Each character of the index is a single directory in the path.
+
+Each path typically contains a single data group (like one user for example).
+Data files in the index system are directly accessible via their index paths and
+the tree structure can be quickly searched by prefix using typical directory
+walking functions.
+
+*/
+
 //
 package main
 
@@ -96,9 +108,11 @@ func WalkBranch(path string, limit int) []string {
 	Walk(path, limit, visit)
 	return results
 }
+
 func makePath(path string) error {
 	return os.MkdirAll(path, 0700)
 }
+
 func indexPath(name []byte) string {
 	name = []byte(strings.ToLower(string(name)))
 	b := bytes.Split(name, []byte{})
