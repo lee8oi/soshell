@@ -38,7 +38,7 @@ func (u *user) load(name, pass string) error {
 func (u *user) save(name, pass string) error {
 	path := *users + SEP + indexPath([]byte(name))
 	if !pathExists(path) {
-		err := makePath(path)
+		err := makePath(path, 0700)
 		if err != nil {
 			log.Println(err)
 			return err

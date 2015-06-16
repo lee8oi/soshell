@@ -33,8 +33,8 @@ func indexPath(name []byte) string {
 }
 
 // makePath will make all the directories in the specified path.
-func makePath(path string) error {
-	return os.MkdirAll(path, 0700)
+func makePath(path string, mode os.FileMode) error {
+	return os.MkdirAll(path, mode)
 }
 
 // pathExists returns true if the path exists or false if it doesn't.
