@@ -25,6 +25,19 @@ import (
 	"strings"
 )
 
+// indexPath returns the index path equivalent of name.
+func indexPath(name []byte) string {
+	name = []byte(strings.ToLower(string(name)))
+	b := bytes.Split(name, []byte{})
+	return string(bytes.Join(b, []byte(string(os.PathSeparator))))
+}
+
+// makePath will make all the directories in the specified path.
+func makePath(path string) error {
+	return os.MkdirAll(path, 0700)
+}
+
+// pathExists returns true if the path exists or false if it doesn't.
 func pathExists(path string) bool {
 	if _, err := os.Stat(path); err != nil {
 		if os.IsNotExist(err) {
@@ -35,18 +48,34 @@ func pathExists(path string) bool {
 	return true
 }
 
-func readDirNames(dirname string, limit int) ([]string, error) {
-	f, err := os.Open(dirname)
-	if err != nil {
-		return nil, err
+// WalkPath starts at root and recursively 'walks' the file tree until it reaches
+// the limit and returns a slice of strings containg the paths to all files it
+// finds.
+func WalkPath(root string, limit int) []string {
+	var results []string
+	visit := func(fpath string, fi os.FileInfo, err error) (e error) {
+		if err != nil {
+			return err
+		}
+		if fpath == root || fi.IsDir() {
+			return nil
+		}
+		results = append(results, fpath)
+		return
 	}
-	names, err := f.Readdirnames(limit)
-	f.Close()
+	Walk(root, limit, visit)
+	return results
+}
+
+// functions below this point were borrowed from filepath package but modified to
+// include a limit.
+
+func Walk(root string, limit int, walkFn WalkFunc) error {
+	info, err := os.Lstat(root)
 	if err != nil {
-		return nil, err
+		return walkFn(root, nil, err)
 	}
-	sort.Strings(names)
-	return names, nil
+	return walk(root, limit, info, walkFn)
 }
 
 type WalkFunc func(path string, info os.FileInfo, err error) error
@@ -85,36 +114,16 @@ func walk(path string, limit int, info os.FileInfo, walkFn WalkFunc) error {
 	return nil
 }
 
-func Walk(root string, limit int, walkFn WalkFunc) error {
-	info, err := os.Lstat(root)
+func readDirNames(dirname string, limit int) ([]string, error) {
+	f, err := os.Open(dirname)
 	if err != nil {
-		return walkFn(root, nil, err)
+		return nil, err
 	}
-	return walk(root, limit, info, walkFn)
-}
-
-func WalkBranch(path string, limit int) []string {
-	var results []string
-	visit := func(fpath string, fi os.FileInfo, err error) (e error) {
-		if err != nil {
-			return err
-		}
-		if fpath == path || fi.IsDir() {
-			return nil
-		}
-		results = append(results, fpath)
-		return
+	names, err := f.Readdirnames(limit)
+	f.Close()
+	if err != nil {
+		return nil, err
 	}
-	Walk(path, limit, visit)
-	return results
-}
-
-func makePath(path string) error {
-	return os.MkdirAll(path, 0700)
-}
-
-func indexPath(name []byte) string {
-	name = []byte(strings.ToLower(string(name)))
-	b := bytes.Split(name, []byte{})
-	return string(bytes.Join(b, []byte(string(os.PathSeparator))))
+	sort.Strings(names)
+	return names, nil
 }
