@@ -12,12 +12,14 @@
 	</head>
 	<body>
 	{{if .SockUrl}}
-	<div id="status-box"></div>
-	<div id="msg-list"></div>
-	<form id="input-box" onsubmit="Send(); return false">
-		<input id="msg-txt" type="text" />
-		<input type="submit" id="sendBtn" value="send"/>
-	</form>
+	<div id="main">
+		<div id="status-box"></div>
+		<div id="msg-list"></div>
+		<form id="input-box" onsubmit="Send(); return false">
+			<input id="msg-txt" type="text" />
+			<input type="submit" id="sendBtn" value="send"/>
+		</form>
+	</div>
 	{{end}}
 	</body>
 </html>
