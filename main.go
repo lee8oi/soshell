@@ -104,6 +104,17 @@ func serveClient(w http.ResponseWriter, r *http.Request) {
 	clientTempl.Execute(w, data{SockUrl: sockUrl})
 }
 
+// pathExists returns true if the path exists or false if it doesn't.
+func pathExists(path string) bool {
+	if _, err := os.Stat(path); err != nil {
+		if os.IsNotExist(err) {
+			return false
+		}
+		panic(err)
+	}
+	return true
+}
+
 func init() {
 	flag.Parse()
 	dirs := map[string]os.FileMode{*work: 0700, *public: 0755, *users: 0700}
@@ -142,7 +153,7 @@ func main() {
 	http.Handle("/public/", http.StripPrefix("/public/", http.FileServer(http.Dir(*public))))
 	go func() {
 		// cert.pem is ssl.crt + *server.ca.pem
-		fmt.Println("Listening at "+"https://"+*hostname+*httpsAddr)
+		fmt.Println("Listening at " + "https://" + *hostname + *httpsAddr)
 		err := http.ListenAndServeTLS(*httpsAddr, *certFile, *keyFile, nil)
 		if err != nil {
 			log.Fatal("ListenAndServeTLS:", err)

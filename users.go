@@ -7,9 +7,9 @@ package main
 
 import (
 	"errors"
-	"fmt"
+	//	"fmt"
 	"log"
-	//"os"
+	//	"os"
 	"encoding/json"
 	"github.com/HouzuoGuo/tiedot/db"
 	"regexp"
@@ -23,27 +23,18 @@ func init() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	if err := database.Create("users"); err != nil {
-		log.Println(err)
+	if err := database.Create("users"); err == nil {
+		if err := userDB.Index([]string{"Name"}); err != nil {
+			log.Println(err)
+		}
+		if err := userDB.Index([]string{"Pass"}); err != nil {
+			log.Println(err)
+		}
+		if err := userDB.Index([]string{"Email"}); err != nil {
+			log.Println(err)
+		}
 	}
 	userDB = database.Use("users")
-	if err := userDB.Index([]string{"Name"}); err != nil {
-		log.Println(err)
-	}
-	if err := userDB.Index([]string{"Pass"}); err != nil {
-		log.Println(err)
-	}
-	if err := userDB.Index([]string{"Email"}); err != nil {
-		log.Println(err)
-	}
-	for _, path := range userDB.AllIndexes() {
-		log.Printf("I have an index on path %v\n", path)
-	}
-	userDB.ForEachDoc(func(id int, docContent []byte) (willMoveOn bool) {
-		log.Println("Document", id, "is", string(docContent))
-		return true  // move on to the next document OR
-		return false // do not move on to the next document
-	})
 }
 
 type user struct {
@@ -66,14 +57,11 @@ func isName(name string) bool {
 func (u *user) load(name, pass string) error {
 	var query interface{}
 	json.Unmarshal([]byte(`[{"eq": "`+name+`", "in": ["Name"]}]`), &query)
-	log.Println("running query")
-	result := make(map[int]struct{}) // query result (document IDs) goes into map keys
-
+	result := make(map[int]struct{})
 	if err := db.EvalQuery(query, userDB, &result); err != nil {
 		log.Println(err)
 		return err
 	}
-	fmt.Printf("%v", result)
 	var (
 		rb  map[string]interface{}
 		err error
@@ -83,7 +71,6 @@ func (u *user) load(name, pass string) error {
 		if err != nil {
 			return err
 		}
-		fmt.Println(rb["Name"])
 		break //only need one result
 	}
 	if rb["Name"] == name && rb["Pass"] == pass {
