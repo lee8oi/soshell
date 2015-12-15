@@ -22,6 +22,7 @@ var (
 
 type user struct {
 	Email, Name string
+	auth        bool
 	ID          int
 }
 
@@ -124,6 +125,7 @@ func (u *user) login(name, pass string) error {
 			u.Name = strings.Title(doc["Name"].(string))
 			u.Email = doc["Email"].(string)
 			u.ID = id
+			u.auth = true
 			return nil
 		}
 		return errors.New("Bad username or password.")
