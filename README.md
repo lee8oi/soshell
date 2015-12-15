@@ -1,5 +1,5 @@
 # Soshell
-Soshell is a web-based interactive console written in Go & JavaScript. The working goal is to create a public web-based social platform with a chatroom/command console inspired interface.
+Soshell is a web-based interactive console written in Go & JavaScript with a chatroom/command console inspired interface. Currently in early development stages.
 
 ## Basic Features
 * Uses HTTPS/WSS for secure web connections.
