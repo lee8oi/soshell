@@ -10,14 +10,14 @@ Soshell is a web-based interactive console written in Go & JavaScript. The worki
 ## Usage
 
 ### Server Command Flags
-* -http 	- Web http port.
-* -https 	- Web https port.
-* -host	- Domain or host name.
-* -public - Public web directory path.
-* -cert 	- Path to encryption certificate.
-* -key 	- Path to encryption key.
-* -dbpath - Path to database.
-* -help	- Show command help information.
+	-cert 	- (required)            Path to encryption certificate.
+	-key 	- (required)            Path to encryption key.
+	-http 	- (default:80)          Web http port.
+	-https 	- (default:443)         Web https port.
+	-host	- (default:"localhost") Domain or host name.
+	-public - (default:"public")    Public web directory path.
+	-dbpath - (default:"database")  Path to database.
+	-help	- Show command help information.
 
 ### Example
 ```
