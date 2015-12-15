@@ -6,12 +6,10 @@
 package main
 
 import (
-	"errors"
-	//	"fmt"
-	"log"
-	//	"os"
 	"encoding/json"
+	"errors"
 	"github.com/HouzuoGuo/tiedot/db"
+	"log"
 	"regexp"
 	"strings"
 	// "github.com/HouzuoGuo/tiedot/dberr"
@@ -74,7 +72,6 @@ func userExists(name string) bool {
 	if err != nil {
 		log.Println(err)
 	}
-	log.Printf("user check: %v", rb)
 	if rb["Name"] == strings.ToLower(name) {
 		return true
 	}
@@ -96,7 +93,6 @@ func queryUser(name string) (rb map[string]interface{}, err error) {
 		}
 		break //only need one result
 	}
-	log.Printf("%v", rb)
 	return rb, nil
 }
 
