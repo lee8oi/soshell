@@ -9,6 +9,10 @@ This file contains the command addons used used by the client via text commands.
 //
 package main
 
+import (
+	"log"
+)
+
 type command struct {
 	Desc    string
 	Handler func(*client, []string) error
@@ -65,17 +69,22 @@ func init() {
 				} else {
 					name := args[1]
 					if isName(name) {
-						pass, e := c.promptSecure("#msg-txt", "Please enter your password")
-						if e == nil && len(pass) > 0 {
-							e = c.user.load(name, pass)
-							if e != nil {
-								e = c.appendMsg("#msg-list", "Login failed")
-							} else {
-								e = c.innerHTML("#status-box", "<b>"+c.user.Name+"</b>")
-								if e == nil {
-									e = c.appendMsg("#msg-list", "Welcome back, "+c.user.Name)
+						if userExists(name) {
+							pass, e := c.promptSecure("#msg-txt", "Please enter your password")
+							if e == nil && len(pass) > 0 {
+								e = c.user.login(name, pass)
+								if e != nil {
+									log.Println("login error:", e)
+									e = c.appendMsg("#msg-list", "Login failed")
+								} else {
+									e = c.innerHTML("#status-box", "<b>"+c.user.Name+"</b>")
+									if e == nil {
+										e = c.appendMsg("#msg-list", "Welcome back, "+c.user.Name)
+									}
 								}
 							}
+						} else {
+							e = c.appendMsg("#msg-list", "User does not exist")
 						}
 					} else {
 						e = c.appendMsg("#msg-list", "Invalid characters in name")
@@ -91,26 +100,30 @@ func init() {
 			if len(args) > 1 {
 				name := args[1]
 				if isName(name) {
-					email, e := c.prompt("Enter your email address")
-					if e == nil && isEmail(email) {
-						pass1, e1 := c.promptSecure("#msg-txt", "Enter a good password")
-						if e1 == nil {
-							pass2, e2 := c.promptSecure("#msg-txt", "Re-enter your password")
-							if e2 == nil && pass1 == pass2 {
-								c.user.Email = email
-								c.user.Name = name
-								e = c.user.save(name, pass1)
-								if e == nil {
-									e = c.appendMsg("#msg-list", "User account created (don't forget your password!)")
+					if !userExists(name) {
+						email, e := c.prompt("Enter your email address")
+						if e == nil && isEmail(email) {
+							pass1, e := c.promptSecure("#msg-txt", "Enter a good password")
+							if e == nil {
+								pass2, e := c.promptSecure("#msg-txt", "Re-enter your password")
+								if e == nil && pass1 == pass2 {
+									c.user.Email = email
+									c.user.Name = name
+									e = c.user.save(name, pass1, email)
+									if e == nil {
+										e = c.appendMsg("#msg-list", "User account created (don't forget your password!)")
+									} else {
+										e = c.appendMsg("#msg-list", e.Error())
+									}
 								} else {
-									e = c.appendMsg("#msg-list", e.Error())
+									e = c.appendMsg("#msg-list", "Failed! Passwords did not match")
 								}
-							} else {
-								e = c.appendMsg("#msg-list", "Failed! Passwords did not match")
 							}
+						} else {
+							e = c.appendMsg("#msg-list", "Bad email address")
 						}
 					} else {
-						e = c.appendMsg("#msg-list", "Bad email address")
+						e = c.appendMsg("#msg-list", "User already exists")
 					}
 				} else {
 					e = c.appendMsg("#msg-list", "Invalid characters in name")
