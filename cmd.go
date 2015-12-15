@@ -94,6 +94,18 @@ func init() {
 			return
 		},
 	}
+	cmdMap["logout"] = command{
+		Desc: "logout lets you log out of the connected user account.",
+		Handler: func(c *client, args []string) (e error) {
+			if c.user.auth == true {
+				e = c.innerHTML("#status-box", "<b>Guest</b>")
+				c.user = user{Name: "Guest"}
+			} else {
+				e = c.appendMsg("#msg-list", "Not logged in.")
+			}
+			return
+		},
+	}
 	cmdMap["register"] = command{
 		Desc: "register a user account",
 		Handler: func(c *client, args []string) (e error) {
