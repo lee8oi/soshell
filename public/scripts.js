@@ -7,15 +7,20 @@ This file contains the websocket functions along with the DomMap that is used in
 with server-side methods to provide interactive access to client-side html/css.
 */
 
-var ws
+var ws;
+var disconnected = false;
 function startSock() {
 	ws = new WebSocket(sockUrl);
 	ws.onopen = function (event) {
 		AppendMsg("#msg-list", "Connected");
+		disconnected = false;
 		document.getElementById("msg-txt").focus();
 	};
 	ws.onclose = function(){
-		AppendMsg("#msg-list", "Disconnected");
+		if (!disconnected) {
+			AppendMsg("#msg-list", "Disconnected");
+			disconnected = true;
+		}
 		setTimeout(startSock, 3000);
 	};
 	ws.onmessage = function(event) {
