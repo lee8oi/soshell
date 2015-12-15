@@ -40,7 +40,7 @@ func isName(name string) bool {
 
 func loadUserDB() {
 	var err error
-	database, err = db.OpenDB(*work + SEP + "database")
+	database, err = db.OpenDB(*dbpath + SEP + "database")
 	if err != nil {
 		log.Fatal(err)
 	}
