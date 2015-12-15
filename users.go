@@ -6,14 +6,48 @@
 package main
 
 import (
-	//"errors"
+	"errors"
+	"fmt"
 	"log"
 	//"os"
+	"encoding/json"
+	"github.com/HouzuoGuo/tiedot/db"
 	"regexp"
+	// "github.com/HouzuoGuo/tiedot/dberr"
 )
 
+var userDB *db.Col
+
+func init() {
+	database, err := db.OpenDB(*work + SEP + "database")
+	if err != nil {
+		log.Fatal(err)
+	}
+	if err := database.Create("users"); err != nil {
+		log.Println(err)
+	}
+	userDB = database.Use("users")
+	if err := userDB.Index([]string{"Name"}); err != nil {
+		log.Println(err)
+	}
+	if err := userDB.Index([]string{"Pass"}); err != nil {
+		log.Println(err)
+	}
+	if err := userDB.Index([]string{"Email"}); err != nil {
+		log.Println(err)
+	}
+	for _, path := range userDB.AllIndexes() {
+		log.Printf("I have an index on path %v\n", path)
+	}
+	userDB.ForEachDoc(func(id int, docContent []byte) (willMoveOn bool) {
+		log.Println("Document", id, "is", string(docContent))
+		return true  // move on to the next document OR
+		return false // do not move on to the next document
+	})
+}
+
 type user struct {
-	Email, Name string
+	Email, Name, DocID string
 }
 
 // isEmail makes she that email is properly formated as an email address.
@@ -28,21 +62,45 @@ func isName(name string) bool {
 	return !nameReg.MatchString(name)
 }
 
-// load is used to load a users info from json stored in an encrypted file.
+// load is used to load a users info from the users database.
 func (u *user) load(name, pass string) error {
-	path := *users + SEP + indexPath([]byte(name))
-	return loadObject(u, path+SEP+"user", pass)
-}
+	var query interface{}
+	json.Unmarshal([]byte(`[{"eq": "`+name+`", "in": ["Name"]}]`), &query)
+	log.Println("running query")
+	result := make(map[int]struct{}) // query result (document IDs) goes into map keys
 
-// save will save a users info as json in an encrypted file.
-func (u *user) save(name, pass string) error {
-	path := *users + SEP + indexPath([]byte(name))
-	if !pathExists(path) {
-		err := makePath(path, 0700)
+	if err := db.EvalQuery(query, userDB, &result); err != nil {
+		log.Println(err)
+		return err
+	}
+	fmt.Printf("%v", result)
+	var (
+		rb  map[string]interface{}
+		err error
+	)
+	for id := range result {
+		rb, err = userDB.Read(id)
 		if err != nil {
-			log.Println(err)
 			return err
 		}
+		fmt.Println(rb["Name"])
+		break //only need one result
 	}
-	return saveObject(u, path+SEP+"user", pass)
+	if rb["Name"] == name && rb["Pass"] == pass {
+		u.Name = rb["Name"].(string)
+		return nil
+	}
+	return errors.New("Bad username or password.")
+}
+
+// save will save a users info in users database.
+func (u *user) save(name, pass string) error {
+	_, err := userDB.Insert(map[string]interface{}{
+		"Name":  name,
+		"Pass":  pass,
+		"Email": "blank"})
+	if err != nil {
+		return err
+	}
+	return nil
 }

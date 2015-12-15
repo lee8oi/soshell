@@ -3,9 +3,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 /*
-This file contains the command addons used by the web client. Includes
-the available DOM related methods used in conjunction with client-side JS scripts for
-interacting with the client HTML/CSS.
+This file contains the command addons used used by the client via text commands.
 */
 
 //
@@ -25,7 +23,7 @@ func init() {
 			if len(args) > 0 {
 				if len(args) == 1 {
 					cmds := ""
-					for k, _ := range cmdMap {
+					for k := range cmdMap {
 						cmds += " " + k
 					}
 					e = c.appendMsg("#msg-list", "Available commands:"+cmds)
@@ -40,6 +38,15 @@ func init() {
 			return
 		},
 	}
+	//	cmdMap["motd"] = command{
+	//		Desc: "motd prints the current message-of-the-day.",
+	//		Handler: func(c *client, args []string) (e error) {
+	//			if len(args) > 0 {
+	//				// do something.
+	//			}
+	//			return
+	//		},
+	//	}
 	cmdMap["clear"] = command{
 		Desc: "clear the current terminal's content",
 		Handler: func(c *client, args []string) (e error) {
@@ -58,22 +65,17 @@ func init() {
 				} else {
 					name := args[1]
 					if isName(name) {
-						path := *users + SEP + indexPath([]byte(name))
-						if pathExists(path) {
-							pass, e := c.promptSecure("#msg-txt", "Please enter your password")
-							if e == nil && len(pass) > 0 {
-								e = c.user.load(name, pass)
-								if e != nil {
-									e = c.appendMsg("#msg-list", "Login failed")
-								} else {
-									e = c.innerHTML("#status-box", "<b>"+c.user.Name+"</b>")
-									if e == nil {
-										e = c.appendMsg("#msg-list", "Welcome back, "+c.user.Name)
-									}
+						pass, e := c.promptSecure("#msg-txt", "Please enter your password")
+						if e == nil && len(pass) > 0 {
+							e = c.user.load(name, pass)
+							if e != nil {
+								e = c.appendMsg("#msg-list", "Login failed")
+							} else {
+								e = c.innerHTML("#status-box", "<b>"+c.user.Name+"</b>")
+								if e == nil {
+									e = c.appendMsg("#msg-list", "Welcome back, "+c.user.Name)
 								}
 							}
-						} else {
-							e = c.appendMsg("#msg-list", "User does not exist")
 						}
 					} else {
 						e = c.appendMsg("#msg-list", "Invalid characters in name")
