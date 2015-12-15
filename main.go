@@ -25,8 +25,7 @@ var (
 	httpPort    = flag.String("http", "80", "http service address")
 	httpsPort   = flag.String("https", "443", "https service address")
 	hostname    = flag.String("host", "localhost", "domain or host name")
-	work        = flag.String("work", "work", "working directory")
-	users       = flag.String("users", "users", "users root folder")
+	dbpath      = flag.String("dbpath", "database", "database path")
 	certFile    = flag.String("cert", "cert.pem", "SSL certificate file")
 	keyFile     = flag.String("key", "key.pem", "SSL key file")
 	public      = flag.String("public", "public", "public web directory")
@@ -98,7 +97,6 @@ func serveClient(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		http.Redirect(w, r, getAddr(), 301)
-		//http.Redirect(w, r, "https://"+*hostname+*httpsPort, 301)
 		return
 	}
 	if r.Method != "GET" {
@@ -126,7 +124,7 @@ func pathExists(path string) bool {
 
 func init() {
 	flag.Parse()
-	dirs := map[string]os.FileMode{*work: 0700, *public: 0755, *users: 0700}
+	dirs := map[string]os.FileMode{*public: 0755, *dbpath: 0700}
 	for path, perm := range dirs {
 		if pathExists(path) {
 			err := os.Chmod(path, perm)
@@ -138,17 +136,6 @@ func init() {
 			if err != nil {
 				log.Fatal(err)
 			}
-		}
-	}
-	for _, file := range []*string{certFile, keyFile} {
-		_, err := os.Stat(*file)
-		if os.IsNotExist(err) {
-			path := *work + SEP + *file
-			_, err := os.Stat(path)
-			if err != nil {
-				log.Fatal(err)
-			}
-			*file = path
 		}
 	}
 	clientTempl = template.Must(template.ParseFiles(*public + SEP + "client.html"))
