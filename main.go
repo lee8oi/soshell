@@ -7,6 +7,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 	"io"
@@ -141,6 +142,7 @@ func main() {
 	http.Handle("/public/", http.StripPrefix("/public/", http.FileServer(http.Dir(*public))))
 	go func() {
 		// cert.pem is ssl.crt + *server.ca.pem
+		fmt.Println("Listening at "+"https://"+*hostname+*httpsAddr)
 		err := http.ListenAndServeTLS(*httpsAddr, *certFile, *keyFile, nil)
 		if err != nil {
 			log.Fatal("ListenAndServeTLS:", err)
