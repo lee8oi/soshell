@@ -152,6 +152,7 @@ func main() {
 	r.HandleFunc("/ws", serveWs)
 	http.Handle("/", r)
 	http.Handle("/public/", http.StripPrefix("/public/", http.FileServer(http.Dir(*public))))
+	loadUserDB()
 	go func() {
 		// cert.pem is ssl.crt + *server.ca.pem
 		fmt.Println("Listening at " + "https://" + *hostname + *httpsAddr)
@@ -166,7 +167,6 @@ func main() {
 			log.Fatal("ListenAndServe: ", err)
 		}
 	}()
-	loadUserDB()
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, os.Kill)
 	s := <-c
