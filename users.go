@@ -21,7 +21,8 @@ var (
 )
 
 type user struct {
-	Email, Name, DocID string
+	Email, Name string
+	ID          int
 }
 
 // isEmail makes she that email is properly formated as an email address.
@@ -68,7 +69,7 @@ func closeUserDB() {
 }
 
 func userExists(name string) bool {
-	rb, err := queryUser(name)
+	_, rb, err := queryUser(name)
 	if err != nil {
 		log.Println(err)
 	}
@@ -78,33 +79,51 @@ func userExists(name string) bool {
 	return false
 }
 
-func queryUser(name string) (rb map[string]interface{}, err error) {
+func userID(name string) int {
 	var query interface{}
 	result := make(map[int]struct{})
 	json.Unmarshal([]byte(`[{"eq": "`+strings.ToLower(name)+`", "in": ["Name"]}]`), &query)
 	if err := db.EvalQuery(query, userDB, &result); err != nil {
 		log.Println(err)
-		return nil, err
+		return 0
 	}
 	for id := range result {
-		rb, err = userDB.Read(id)
-		if err != nil {
-			return nil, err
-		}
+		return id
 		break //only need one result
 	}
-	return rb, nil
+	return 0
+}
+
+func userDoc(id int) (rb map[string]interface{}, err error) {
+	rb, err = userDB.Read(id)
+	if err != nil {
+		return nil, err
+	}
+	return
+}
+
+func queryUser(name string) (id int, rb map[string]interface{}, err error) {
+	if id := userID(name); id == 0 {
+		return 0, nil, errors.New("User not found.")
+	} else {
+		rb, err = userDoc(id)
+		if err != nil {
+			return 0, nil, err
+		}
+	}
+	return
 }
 
 // login checks the users password and loads their info from the users database.
 func (u *user) login(name, pass string) error {
-	if rb, err := queryUser(name); err != nil {
+	if id, doc, err := queryUser(name); err != nil {
 		log.Println(err)
 		return err
 	} else {
-		if rb["Name"] == name && rb["Pass"] == pass {
-			u.Name = strings.Title(rb["Name"].(string))
-			u.Email = rb["Email"].(string)
+		if doc["Name"] == strings.ToLower(name) && doc["Pass"] == pass {
+			u.Name = strings.Title(doc["Name"].(string))
+			u.Email = doc["Email"].(string)
+			u.ID = id
 			return nil
 		}
 		return errors.New("Bad username or password.")
