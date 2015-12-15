@@ -22,8 +22,8 @@ import (
 const SEP = string(os.PathSeparator)
 
 var (
-	httpAddr    = flag.String("http", ":8080", "http service address")
-	httpsAddr   = flag.String("https", ":8090", "https service address")
+	httpPort    = flag.String("http", "80", "http service address")
+	httpsPort   = flag.String("https", "443", "https service address")
 	hostname    = flag.String("host", "localhost", "domain or host name")
 	work        = flag.String("work", "work", "working directory")
 	users       = flag.String("users", "users", "users root folder")
@@ -90,7 +90,15 @@ func serveClient(w http.ResponseWriter, r *http.Request) {
 	}
 	if r.TLS == nil {
 		log.Println("redirecting")
-		http.Redirect(w, r, "https://"+*hostname+*httpsAddr, 301)
+		getAddr := func() string {
+			if *httpsPort != ":443" {
+				return "https://" + *hostname + ":" + *httpsPort
+			} else {
+				return "https://" + *hostname
+			}
+		}
+		http.Redirect(w, r, getAddr(), 301)
+		//http.Redirect(w, r, "https://"+*hostname+*httpsPort, 301)
 		return
 	}
 	if r.Method != "GET" {
@@ -101,7 +109,7 @@ func serveClient(w http.ResponseWriter, r *http.Request) {
 	type data struct {
 		SockUrl, Status string
 	}
-	sockUrl := "wss://" + *hostname + *httpsAddr + "/ws"
+	sockUrl := "wss://" + *hostname + ":" + *httpsPort + "/ws"
 	clientTempl.Execute(w, data{SockUrl: sockUrl})
 }
 
@@ -150,19 +158,20 @@ func main() {
 	r := mux.NewRouter()
 	r.HandleFunc("/", serveClient)
 	r.HandleFunc("/ws", serveWs)
+	https := ":" + *httpsPort
 	http.Handle("/", r)
 	http.Handle("/public/", http.StripPrefix("/public/", http.FileServer(http.Dir(*public))))
 	loadUserDB()
 	go func() {
 		// cert.pem is ssl.crt + *server.ca.pem
-		fmt.Println("Listening at " + "https://" + *hostname + *httpsAddr)
-		err := http.ListenAndServeTLS(*httpsAddr, *certFile, *keyFile, nil)
+		fmt.Println("Listening at " + "https://" + *hostname + https)
+		err := http.ListenAndServeTLS(https, *certFile, *keyFile, nil)
 		if err != nil {
 			log.Fatal("ListenAndServeTLS:", err)
 		}
 	}()
 	go func() {
-		err := http.ListenAndServe(*httpAddr, nil)
+		err := http.ListenAndServe(":"+*httpPort, nil)
 		if err != nil {
 			log.Fatal("ListenAndServe: ", err)
 		}
