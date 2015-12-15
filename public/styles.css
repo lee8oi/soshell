@@ -28,7 +28,7 @@ html {
 #input-box {
 	background: black;
 	border: 3px inset grey;
-	margin: 0px 10px 0px 10px;
+	margin: 5px 10px 0px 10px;
 	border-radius: 5px;
 	max-width:1000px;
 	overflow: hidden;
@@ -56,7 +56,7 @@ html {
 	max-width:1024px;
 	margin-left: 10px;
 	margin-right: 7px;
-	height: calc(100% - 65px);
+	height: calc(100% - 75px);
 }
 #sendBtn {
 	color: white;
