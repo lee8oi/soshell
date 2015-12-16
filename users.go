@@ -37,6 +37,7 @@ type user struct {
 
 func init() {
 	//users := make(map[string]user)
+	guestlist = make(map[string]bool)
 }
 
 // isEmail makes she that email is properly formated as an email address.
@@ -63,6 +64,7 @@ func guestName() string {
 		if _, ok := guestlist[name]; ok {
 			name = "Guest" + randNum()
 		} else {
+			guestlist[name] = true
 			break
 		}
 	}
