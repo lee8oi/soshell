@@ -13,9 +13,10 @@ package main
 
 import (
 	"errors"
-	"github.com/gorilla/websocket"
 	"strings"
 	"time"
+
+	"github.com/gorilla/websocket"
 )
 
 // packet is an extensible object type transmitted via websocket as JSON.
@@ -36,6 +37,7 @@ type client struct {
 	ws            *websocket.Conn
 	user          user
 	path, address string
+	server        string
 }
 
 // recieve reads a single message and returns it.
@@ -58,6 +60,10 @@ func (c *client) listener() (e error) {
 		if len(args) > 0 && len(args[0]) > 0 {
 			if cmd, exists := cmdMap[strings.ToLower(args[0])]; exists {
 				e = cmd.Handler(c, args)
+			} else if c.server != "" {
+				if servers.exists(c.server) {
+					servers[c.server].broadcast <- string(b)
+				}
 			} else {
 				e = c.appendMsg("#msg-list", args[0]+": command not found ")
 			}

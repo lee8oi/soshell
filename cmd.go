@@ -94,6 +94,24 @@ func init() {
 			return
 		},
 	}
+	cmdMap["connect"] = command{
+		Desc: "connect to a server.",
+		Handler: func(c *client, args []string) (e error) {
+			if len(args) > 0 {
+				c.connect(args[1])
+			} else {
+				e = c.appendMsg("#msg-list", "Usage: connect <server name>")
+			}
+			return
+		},
+	}
+	cmdMap["disconnect"] = command{
+		Desc: "disconnect from connected server.",
+		Handler: func(c *client, args []string) (e error) {
+			c.disconnect()
+			return
+		},
+	}
 	cmdMap["logout"] = command{
 		Desc: "logout lets you log out of the connected user account.",
 		Handler: func(c *client, args []string) (e error) {
