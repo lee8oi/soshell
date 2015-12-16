@@ -72,7 +72,7 @@ func serveWs(w http.ResponseWriter, r *http.Request) {
 	}
 	defer ws.Close()
 	var c = client{ws: ws, address: ws.RemoteAddr().String(),
-		user: user{Name: "Guest"}, command: &sysCommands}
+		user: user{Name: guestName()}, command: &sysCommands}
 	log.Println(c.address, r.URL, "connected")
 	c.innerHTML("#status-box", "<b>"+c.user.Name+"</b>")
 	e := c.listener()

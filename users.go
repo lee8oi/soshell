@@ -8,10 +8,14 @@ package main
 import (
 	"encoding/json"
 	"errors"
-	"github.com/HouzuoGuo/tiedot/db"
+	"fmt"
 	"log"
+	"math/rand"
 	"regexp"
 	"strings"
+	"time"
+
+	"github.com/HouzuoGuo/tiedot/db"
 	// "github.com/HouzuoGuo/tiedot/dberr"
 )
 
@@ -20,10 +24,19 @@ var (
 	userDB   *db.Col
 )
 
+var (
+	//users    map[string]user
+	guestlist map[string]bool
+)
+
 type user struct {
 	Email, Name string
 	auth        bool
 	ID          int
+}
+
+func init() {
+	//users := make(map[string]user)
 }
 
 // isEmail makes she that email is properly formated as an email address.
@@ -36,6 +49,24 @@ func isEmail(email string) bool {
 func isName(name string) bool {
 	nameReg := regexp.MustCompile("[\\W]+")
 	return !nameReg.MatchString(name)
+}
+
+func randNum() string {
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	ar := r.Perm(5)
+	return fmt.Sprintf("%d%d%d%d%d", ar[0], ar[1], ar[2], ar[3], ar[4])
+}
+
+func guestName() string {
+	name := "Guest" + randNum()
+	for {
+		if _, ok := guestlist[name]; ok {
+			name = "Guest" + randNum()
+		} else {
+			break
+		}
+	}
+	return name
 }
 
 func loadUserDB() {
