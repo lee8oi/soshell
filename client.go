@@ -13,6 +13,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -38,6 +39,7 @@ type client struct {
 	user          user
 	path, address string
 	server        string
+	command       *map[string]command
 }
 
 // recieve reads a single message and returns it.
@@ -58,11 +60,11 @@ func (c *client) listener() (e error) {
 		}
 		args := getArgs(b)
 		if len(args) > 0 && len(args[0]) > 0 {
-			if cmd, exists := cmdMap[strings.ToLower(args[0])]; exists {
+			if cmd, exists := (*c.command)[strings.ToLower(args[0])]; exists {
 				e = cmd.Handler(c, args)
 			} else if c.server != "" {
 				if servers.exists(c.server) {
-					servers[c.server].broadcast <- string(b)
+					servers[c.server].broadcast <- fmt.Sprintf("<%s> %s", c.user.Name, string(b))
 				}
 			} else {
 				e = c.appendMsg("#msg-list", args[0]+": command not found ")

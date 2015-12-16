@@ -18,21 +18,22 @@ type command struct {
 	Handler func(*client, []string) error
 }
 
-var cmdMap = make(map[string]command)
+var sysCommands = make(map[string]command)
+var chatCommands = make(map[string]command)
 
 func init() {
-	cmdMap["help"] = command{
+	sysCommands["help"] = command{
 		Desc: "help returns help information about available commands.",
 		Handler: func(c *client, args []string) (e error) {
 			if len(args) > 0 {
 				if len(args) == 1 {
 					cmds := ""
-					for k := range cmdMap {
+					for k := range sysCommands {
 						cmds += " " + k
 					}
 					e = c.appendMsg("#msg-list", "Available commands:"+cmds)
 				} else {
-					if cmd, ok := cmdMap[args[1]]; ok {
+					if cmd, ok := sysCommands[args[1]]; ok {
 						e = c.appendMsg("#msg-list", cmd.Desc)
 					} else {
 						e = c.appendMsg("#msg-list", "Command not available: "+args[1])
@@ -42,7 +43,7 @@ func init() {
 			return
 		},
 	}
-	//	cmdMap["motd"] = command{
+	//	sysCommands["motd"] = command{
 	//		Desc: "motd prints the current message-of-the-day.",
 	//		Handler: func(c *client, args []string) (e error) {
 	//			if len(args) > 0 {
@@ -51,7 +52,7 @@ func init() {
 	//			return
 	//		},
 	//	}
-	cmdMap["clear"] = command{
+	sysCommands["clear"] = command{
 		Desc: "clear the current terminal's content",
 		Handler: func(c *client, args []string) (e error) {
 			if len(args) > 0 {
@@ -60,7 +61,7 @@ func init() {
 			return
 		},
 	}
-	cmdMap["login"] = command{
+	sysCommands["login"] = command{
 		Desc: "login lets you log into a registered user account.",
 		Handler: func(c *client, args []string) (e error) {
 			if len(args) > 0 {
@@ -94,7 +95,7 @@ func init() {
 			return
 		},
 	}
-	cmdMap["connect"] = command{
+	sysCommands["connect"] = command{
 		Desc: "connect to a server.",
 		Handler: func(c *client, args []string) (e error) {
 			if len(args) > 0 {
@@ -105,14 +106,14 @@ func init() {
 			return
 		},
 	}
-	cmdMap["disconnect"] = command{
+	sysCommands["disconnect"] = command{
 		Desc: "disconnect from connected server.",
 		Handler: func(c *client, args []string) (e error) {
 			c.disconnect()
 			return
 		},
 	}
-	cmdMap["logout"] = command{
+	sysCommands["logout"] = command{
 		Desc: "logout lets you log out of the connected user account.",
 		Handler: func(c *client, args []string) (e error) {
 			if c.user.auth == true {
@@ -124,7 +125,7 @@ func init() {
 			return
 		},
 	}
-	cmdMap["register"] = command{
+	sysCommands["register"] = command{
 		Desc: "register a user account",
 		Handler: func(c *client, args []string) (e error) {
 			if len(args) > 1 {
@@ -161,6 +162,34 @@ func init() {
 			} else {
 				e = c.appendMsg("#msg-list", "Usage: register <name>")
 			}
+			return
+		},
+	}
+	chatCommands["/help"] = command{
+		Desc: "help returns help information about available commands.",
+		Handler: func(c *client, args []string) (e error) {
+			if len(args) > 0 {
+				if len(args) == 1 {
+					cmds := ""
+					for k := range chatCommands {
+						cmds += " " + k
+					}
+					e = c.appendMsg("#msg-list", "Available commands:"+cmds)
+				} else {
+					if cmd, ok := chatCommands[args[1]]; ok {
+						e = c.appendMsg("#msg-list", cmd.Desc)
+					} else {
+						e = c.appendMsg("#msg-list", "Command not available: "+args[1])
+					}
+				}
+			}
+			return
+		},
+	}
+	chatCommands["/disconnect"] = command{
+		Desc: "disconnect from connected server.",
+		Handler: func(c *client, args []string) (e error) {
+			c.disconnect()
 			return
 		},
 	}

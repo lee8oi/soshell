@@ -8,8 +8,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/gorilla/mux"
-	"github.com/gorilla/websocket"
 	"io"
 	"log"
 	"net/http"
@@ -17,6 +15,9 @@ import (
 	"os/signal"
 	"regexp"
 	"text/template"
+
+	"github.com/gorilla/mux"
+	"github.com/gorilla/websocket"
 )
 
 const SEP = string(os.PathSeparator)
@@ -70,7 +71,8 @@ func serveWs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer ws.Close()
-	var c = client{ws: ws, address: ws.RemoteAddr().String(), user: user{Name: "Guest"}}
+	var c = client{ws: ws, address: ws.RemoteAddr().String(),
+		user: user{Name: "Guest"}, command: &sysCommands}
 	log.Println(c.address, r.URL, "connected")
 	c.innerHTML("#status-box", "<b>"+c.user.Name+"</b>")
 	e := c.listener()

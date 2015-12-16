@@ -31,6 +31,7 @@ func (c *client) connect(name string) {
 	c.server = name
 	servers[name].connect <- c
 	servers[name].broadcast <- c.user.Name + " has connected."
+	c.command = &chatCommands
 }
 
 func (c *client) disconnect() error {
@@ -39,6 +40,7 @@ func (c *client) disconnect() error {
 		(*servers[name]).broadcast <- c.user.Name + " has disconnected."
 		(*servers[name]).disconnect <- c
 		c.server = ""
+		c.command = &sysCommands
 		return nil
 	}
 	return errors.New("Not connected to a server.")
