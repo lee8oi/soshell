@@ -118,12 +118,13 @@ func init() {
 	sysCommands["logout"] = command{
 		Desc: "logout lets you log out of the connected user account.",
 		Handler: func(c *client, args []string) (e error) {
-			if e = c.user.logout(); e != nil {
-				log.Println(e)
+			if err := c.user.logout(); err != nil {
+				log.Println(err)
+				e = c.appendMsg("#msg-list", err.Error())
 				return
 			}
-			if e = c.innerHTML("#status-box", "<b>"+c.user.Name+"</b>"); e != nil {
-				log.Println(e)
+			if err := c.innerHTML("#status-box", "<b>"+c.user.Name+"</b>"); e != nil {
+				log.Println(err)
 				return
 			}
 			e = c.appendMsg("#msg-list", "You have logged out.")

@@ -169,6 +169,7 @@ func (u *user) login(name, pass string) error {
 
 func (u *user) logout() error {
 	if u.auth == true {
+		fmt.Println("authed")
 		delete(users, strings.ToLower(u.Name))
 		u.Name = guestName()
 		u.Email = "blank"

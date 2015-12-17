@@ -61,20 +61,33 @@ func (c *client) listener() (e error) {
 		}
 		args := getArgs(b)
 		if len(args) > 0 && len(args[0]) > 0 {
-			if c.cmdPrefix != "" && strings.Index(args[0], c.cmdPrefix) == 0 {
+			if c.cmdPrefix != "" && strings.Index(args[0], c.cmdPrefix) == 0 && len(args[0]) > 1 {
 				args[0] = strings.SplitN(args[0], c.cmdPrefix, 2)[1]
-			}
-			if cmd, exists := (*c.command)[strings.ToLower(args[0])]; exists {
-				e = cmd.Handler(c, args)
+				if err := c.runCommand(args); err != nil {
+					e = c.appendMsg("#msg-list", args[0]+": "+err.Error())
+				}
+			} else if c.cmdPrefix == "" {
+				if err := c.runCommand(args); err != nil {
+					e = c.appendMsg("#msg-list", args[0]+": "+err.Error())
+				}
 			} else if c.server != "" {
 				if servers.exists(c.server) {
 					servers[c.server].broadcast <- fmt.Sprintf("<%s> %s", c.user.Name, string(b))
 				}
 			} else {
-				e = c.appendMsg("#msg-list", args[0]+": command not found ")
+				e = c.appendMsg("#msg-list", "Command failed.")
 			}
 		}
 		time.Sleep(time.Second)
+	}
+	return
+}
+
+func (c *client) runCommand(args []string) (e error) {
+	if cmd, exists := (*c.command)[strings.ToLower(args[0])]; exists {
+		e = cmd.Handler(c, args)
+	} else {
+		e = errors.New("Command not found.")
 	}
 	return
 }
