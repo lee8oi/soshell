@@ -8,6 +8,7 @@ package main
 import (
 	"errors"
 	"log"
+	//"strings"
 )
 
 var servers serverList
@@ -32,15 +33,17 @@ func (c *client) connect(name string) {
 	servers[name].connect <- c
 	servers[name].broadcast <- c.user.Name + " has connected."
 	c.command = &chatCommands
+	c.cmdPrefix = "/"
 }
 
 func (c *client) disconnect() error {
 	name := c.server
-	if servers.exists(name) {
+	if servers.exists(name) && servers[name].isConnected(c.user) {
 		(*servers[name]).broadcast <- c.user.Name + " has disconnected."
 		(*servers[name]).disconnect <- c
 		c.server = ""
 		c.command = &sysCommands
+		c.cmdPrefix = ""
 		return nil
 	}
 	return errors.New("Not connected to a server.")
@@ -56,6 +59,13 @@ type server struct {
 
 func (s *server) empty() bool {
 	if len(s.connections) == 0 {
+		return true
+	}
+	return false
+}
+
+func (s *server) isConnected(u user) bool {
+	if _, ok := s.connections[u.Name]; ok {
 		return true
 	}
 	return false
