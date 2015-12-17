@@ -98,7 +98,7 @@ func init() {
 	sysCommands["connect"] = command{
 		Desc: "connect to a server.",
 		Handler: func(c *client, args []string) (e error) {
-			if len(args) > 0 {
+			if len(args) > 1 {
 				c.connect(args[1])
 			} else {
 				e = c.appendMsg("#msg-list", "Usage: connect <server name>")
@@ -106,22 +106,27 @@ func init() {
 			return
 		},
 	}
-	sysCommands["disconnect"] = command{
-		Desc: "disconnect from connected server.",
-		Handler: func(c *client, args []string) (e error) {
-			c.disconnect()
-			return
-		},
-	}
+	//	sysCommands["disconnect"] = command{
+	//		Desc: "disconnect from connected server.",
+	//		Handler: func(c *client, args []string) (e error) {
+	//			if e = c.disconnect(); e != nil {
+	//				e = c.appendMsg("#msg-list", e.Error())
+	//			}
+	//			return
+	//		},
+	//	}
 	sysCommands["logout"] = command{
 		Desc: "logout lets you log out of the connected user account.",
 		Handler: func(c *client, args []string) (e error) {
-			if c.user.auth == true {
-				e = c.innerHTML("#status-box", "<b>Guest</b>")
-				c.user = user{Name: "Guest"}
-			} else {
-				e = c.appendMsg("#msg-list", "Not logged in.")
+			if e = c.user.logout(); e != nil {
+				log.Println(e)
+				return
 			}
+			if e = c.innerHTML("#status-box", "<b>"+c.user.Name+"</b>"); e != nil {
+				log.Println(e)
+				return
+			}
+			e = c.appendMsg("#msg-list", "You have logged out.")
 			return
 		},
 	}
@@ -165,7 +170,7 @@ func init() {
 			return
 		},
 	}
-	chatCommands["/help"] = command{
+	chatCommands["help"] = command{
 		Desc: "help returns help information about available commands.",
 		Handler: func(c *client, args []string) (e error) {
 			if len(args) > 0 {
@@ -186,10 +191,21 @@ func init() {
 			return
 		},
 	}
-	chatCommands["/disconnect"] = command{
+	chatCommands["disconnect"] = command{
 		Desc: "disconnect from connected server.",
 		Handler: func(c *client, args []string) (e error) {
-			c.disconnect()
+			if e = c.disconnect(); e != nil {
+				e = c.appendMsg("#msg-list", e.Error())
+			}
+			return
+		},
+	}
+	chatCommands["clear"] = command{
+		Desc: "clear the current terminal's content",
+		Handler: func(c *client, args []string) (e error) {
+			if len(args) > 0 {
+				c.innerHTML("#msg-list", " ")
+			}
 			return
 		},
 	}
