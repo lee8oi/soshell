@@ -79,6 +79,7 @@ func serveWs(w http.ResponseWriter, r *http.Request) {
 	if e != nil && e != io.EOF {
 		log.Println(e)
 	}
+	c.user.logout()
 	log.Println(c.address, "disconnected")
 }
 

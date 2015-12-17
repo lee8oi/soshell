@@ -25,7 +25,7 @@ var (
 )
 
 var (
-	//users    map[string]user
+	users     map[string]*user
 	guestlist map[string]bool
 )
 
@@ -36,7 +36,7 @@ type user struct {
 }
 
 func init() {
-	//users := make(map[string]user)
+	users = make(map[string]*user)
 	guestlist = make(map[string]bool)
 }
 
@@ -154,15 +154,29 @@ func (u *user) login(name, pass string) error {
 		log.Println(err)
 		return err
 	} else {
-		if doc["Name"] == strings.ToLower(name) && doc["Pass"] == pass {
+		name = strings.ToLower(name)
+		if doc["Name"] == name && doc["Pass"] == pass {
 			u.Name = strings.Title(doc["Name"].(string))
 			u.Email = doc["Email"].(string)
 			u.ID = id
 			u.auth = true
+			users[name] = u
 			return nil
 		}
 		return errors.New("Bad username or password.")
 	}
+}
+
+func (u *user) logout() error {
+	if u.auth == true {
+		delete(users, strings.ToLower(u.Name))
+		u.Name = guestName()
+		u.Email = "blank"
+		u.auth = false
+		u.ID = 0
+		return nil
+	}
+	return errors.New("Not logged in.")
 }
 
 // save will save a users info in users database.
