@@ -40,6 +40,7 @@ type client struct {
 	path, address string
 	server        string
 	command       *map[string]command
+	cmdPrefix     string
 }
 
 // recieve reads a single message and returns it.
@@ -60,6 +61,9 @@ func (c *client) listener() (e error) {
 		}
 		args := getArgs(b)
 		if len(args) > 0 && len(args[0]) > 0 {
+			if c.cmdPrefix != "" && strings.Index(args[0], c.cmdPrefix) == 0 {
+				args[0] = strings.SplitN(args[0], c.cmdPrefix, 2)[1]
+			}
 			if cmd, exists := (*c.command)[strings.ToLower(args[0])]; exists {
 				e = cmd.Handler(c, args)
 			} else if c.server != "" {
