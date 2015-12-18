@@ -19,11 +19,13 @@ func init() {
 
 type serverList map[string]*server
 
+// exists checks if the specified server is already loaded.
 func (sl *serverList) exists(name string) (b bool) {
 	_, b = (*sl)[name]
 	return
 }
 
+// connect connects the user to the specified server and switches command handler/prefix.
 func (c *client) connect(name string) {
 	if servers.exists(name) == false {
 		servers[name] = newServer(name)
@@ -36,6 +38,7 @@ func (c *client) connect(name string) {
 	c.cmdPrefix = "/"
 }
 
+// disconnect disconnects the user from the specified server and resets command handler/prefix.
 func (c *client) disconnect() error {
 	name := c.server
 	if servers.exists(name) && servers[name].isConnected(c.user) {
@@ -57,6 +60,7 @@ type server struct {
 	name        string
 }
 
+// empty checks if the server is empty (no users left).
 func (s *server) empty() bool {
 	if len(s.connections) == 0 {
 		return true
@@ -64,6 +68,7 @@ func (s *server) empty() bool {
 	return false
 }
 
+// isConnected checks if a user is connected to the server.
 func (s *server) isConnected(u user) bool {
 	if _, ok := s.connections[u.Name]; ok {
 		return true
@@ -71,6 +76,7 @@ func (s *server) isConnected(u user) bool {
 	return false
 }
 
+// hub starts up the appropriate channels and listens for connect's, disconnect's, and broadcast's.
 func (s *server) hub() {
 	defer log.Println("Server closed")
 	for {
@@ -91,6 +97,7 @@ func (s *server) hub() {
 	}
 }
 
+// new Server initializes a new server with the necessary channels.
 func newServer(name string) (s *server) {
 	s = new(server)
 	s.name = name
