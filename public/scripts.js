@@ -3,8 +3,8 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 /* 
-This file contains the websocket functions along with the DomMap that is used inconjunction
-with server-side methods to provide interactive access to client-side html/css.
+This file contains the websocket functions along with additional functions that are used by
+the server to allow interactive access to the client html/css/js.
 */
 
 var ws;
@@ -12,166 +12,84 @@ var disconnected = false;
 function startSock() {
 	ws = new WebSocket(sockUrl);
 	ws.onopen = function (event) {
-		AppendMsg("#msg-list", "Connected");
+		append("#msg-list", '<div class="msg">Connected</div>');
 		disconnected = false;
 		document.getElementById("msg-txt").focus();
 	};
 	ws.onclose = function(){
 		if (!disconnected) {
-			AppendMsg("#msg-list", "Disconnected");
+			append("#msg-list", '<div class="msg">Disconnected</div>');
 			disconnected = true;
 		}
 		setTimeout(startSock, 3000);
 	};
 	ws.onmessage = function(event) {
-		var obj = JSON.parse(event.data);
-		if (obj && obj["Type"]) {
-			if (DomMap[obj["Type"]]) {
-				RunDom(obj);
-			}
+		if (funcs[event.data.split("(")[0]]) {
+			eval(event.data);
 		}
 	};
 }
 startSock();
-function AppendMsg(selector, text) {
-	var obj = {};
-	obj["Type"] = "appendElement";
-	obj.Data = {};
-	obj.Data.Element = "div";
-	obj.Data.Selector = selector;
-	obj.Data.Class = "msg";
-	obj.Data.Text = text;
-	obj.Data.Scroll = "true";
-	RunDom(obj);
-}
+var funcs = {}; //set of functions allowed in eval
 function Send() {
 	var elem = document.getElementById("msg-txt")
 	ws.send(elem.value);
 	elem.value = "";
 	return false
 }
-var OnClick = {};
-OnClick["removeDecoration"] = function (obj) {
-	obj.onclick = function() {
-		obj.style.textDecoration = "none";
-	}
+funcs["append"] = true;
+function append(selector, elem) {
+	$(selector).append(elem);
 }
-function RunDom(obj) {
-	if (obj && obj.Data.Selector) {
-		var elem = document.querySelector(obj.Data.Selector);
-		if (obj.Type && obj.Type.length > 0) {
-			DomMap[obj.Type](elem, obj);
-		}
-	}
+funcs["innerHTML"] = true;
+function innerHTML(selector, text) {
+	$(selector).html(text);
 }
-var DomMap = {};
-DomMap["appendElement"] = function (elem, obj) {
-	if (obj.Data.Element) {
-		var node = document.createElement(obj.Data.Element);
-		if (obj.Data.Class) {
-			node.className = obj.Data.Class;
-		}
-		if (obj.Data.Id) {
-			node.id = obj.Data.Id;
-		}
-		if (obj.Data.Attribute && obj.Data.Value) {
-			node.setAttribute(obj.Data.Attribute, obj.Data.Value);
-		}
-		if (obj.Data.Text) {
-			var text = document.createTextNode(obj.Data.Text);
-	   		node.appendChild(text);
-		}
-		if (obj.Data.HTML) {
-			node.innerHTML = obj.Data.HTML;
-		}
-		if (obj.Data.Href) {
-			node.href = obj.Data.Href;
-		}
-		if (obj.Data.Target) {
-			node.target = obj.Data.Target;
-		}
-		if (obj.Data.OnClick && OnClick[obj.Data.OnClick]) {
-			OnClick[obj.Data.OnClick](node);
-		}
-		if (obj.Data.Focus === "true") {
-			elem.focus();
-		}
-   		elem.appendChild(node);
-		if (obj.Data.Scroll && obj.Data.Scroll == "true") {
-			elem.scrollTop = elem.scrollHeight;
-		}
-	}
+funcs["editable"] = true;
+function editable(selector, val) {
+	var elem = document.querySelector(selector)
+	elem.contentEditable = val;
 }
-DomMap["innerHTML"] = function (elem, obj) {
-	if (obj.Data.Value) {
-		elem.innerHTML = obj.Data.Value;
-	}
-}
-DomMap["editable"] = function (elem, obj) {
-	if (obj.Data.Value) {
-		if (obj.Data.Value === "true") {
-			elem.contentEditable = true;
-		} else {
-			elem.contentEditable = false;
-		}
-	}
-}
-DomMap["focus"] = function (elem, obj) {
-	if (obj.Data.Value) {
-		if (obj.Data.Value === "true") {
-			elem.focus();
-		} else {
-			elem.blur();
-		}
-	}
-}
-DomMap["setAttribute"] = function (elem, obj) {
-	if (obj.Data.Attribute && obj.Data.Value) {
-		elem.setAttribute(obj.Data.Attribute, obj.Data.Value);
-	}
-}
-DomMap["getAttribute"] = function (elem, obj) {
-	if (obj.Data.Attribute) {
-		ws.send(elem.getAttribute(obj.Data.Attribute));
-	}
-}
-DomMap["getProperty"] = function (elem, obj) {
-	if (obj.Data.Property) {
-		ws.send(window.getComputedStyle(elem,null).getPropertyValue(obj.Data.Property));
-	}
-}
-DomMap["exists"] = function (elem, obj) {
-	if (elem) { 
-		ws.send("true")
+funcs["focus"] = true;
+function focus(selector, val) {
+	if (val === true) {
+		$(selector).focus();
 	} else {
-		ws.send("false")
+		$(selector).blur();
 	}
 }
-DomMap["getHTML"] = function (elem, obj) {
-	ws.send(elem.innerHTML);
+funcs["setAttribute"] = true;
+function setAttribute(selector, attr, val) {
+	$(selector).attr(attr, val);
 }
-DomMap["background"] = function (elem, obj) {
-	if (obj.Data.Value) {
-		elem.style.background = obj.Data.Value;
+funcs["getAttribute"] = true;
+function getAttribute(selector, attr) {
+	console.log(attr);
+	ws.send($(selector).attr(attr));
+}
+funcs["getProperty"] = true;
+function getProperty(selector, prop) {
+	var elem = document.querySelector(selector);
+	ws.send($(selector).css(prop));
+}
+funcs["exists"] = true;
+function exists(selector) {
+	if ($(selector)) {
+		ws.send("true");
+	} else {
+		ws.send("false");
 	}
 }
-DomMap["background-color"] = function (elem, obj) {
-	if (obj.Data.Value) {
-		elem.style.backgroundColor = obj.Data.Value;
-	}
+funcs["getHTML"] = true;
+function getHTML(selector) {
+	ws.send($(selector).html());
 }
-DomMap["color"] = function (elem, obj) {
-	if (obj.Data.Value) {
-		elem.style.color = obj.Data.Value;
-	}
+funcs["setProperty"] = true;
+function setProperty(selector, prop, val) {
+	$(selector).css(prop, val);
 }
-DomMap["border"] = function (elem, obj) {
-	if (obj.Data.Value) {
-		elem.style.border = obj.Data.Value;
-	}
-}
-DomMap["border-color"] = function (elem, obj) {
-	if (obj.Data.Value) {
-		elem.style.borderColor = obj.Data.Value;
-	}
+funcs["scroll"] = true;
+function scroll(selector) {
+	var elem = document.querySelector(selector);
+	elem.scrollTop = elem.scrollHeight;
 }

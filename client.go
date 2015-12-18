@@ -20,19 +20,6 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-// packet is an extensible object type transmitted via websocket as JSON.
-type packet struct {
-	Type string
-	Data map[string]string
-}
-
-// newPacket returns an initialized packet with Type set to t
-func newPacket(t string) (pack packet) {
-	pack.Data = make(map[string]string)
-	pack.Type = t
-	return
-}
-
 // client is an extensible type representing a single websocket client.
 type client struct {
 	ws            *websocket.Conn
@@ -52,7 +39,7 @@ func (c *client) recieve() (b []byte, e error) {
 	return
 }
 
-// listener listens for incoming packets and passes them to the respective handlers.
+// listener listens for incoming packets and passes them to the input parser.
 func (c *client) listener() (e error) {
 	for {
 		b, e := c.recieve()
@@ -68,6 +55,7 @@ func (c *client) listener() (e error) {
 	return
 }
 
+// parseInput splits up input and passes the arguments to the respective command handler.
 func (c *client) parseInput(b []byte) (e error) {
 	args := getArgs(b)
 	if len(args) > 0 && len(args[0]) > 0 {
@@ -78,7 +66,7 @@ func (c *client) parseInput(b []byte) (e error) {
 			e = c.runCommand(args)
 		} else if c.server != "" {
 			if servers.exists(c.server) {
-				servers[c.server].broadcast <- fmt.Sprintf("<%s> %s", c.user.Name, string(b))
+				servers[c.server].broadcast <- fmt.Sprintf("[%s] %s", c.user.Name, string(b))
 			}
 		} else {
 			e = errors.New("Command failed.")
@@ -87,12 +75,19 @@ func (c *client) parseInput(b []byte) (e error) {
 	return
 }
 
+// runCommand ensures the command specified in the input exists then runs it.
 func (c *client) runCommand(args []string) (e error) {
 	if cmd, exists := (*c.command)[strings.ToLower(args[0])]; exists {
 		e = cmd.Handler(c, args)
 	} else {
 		e = errors.New("Command not found.")
 	}
+	return
+}
+
+// write take a string and writes it to the websocket.
+func (c *client) write(msg string) (e error) {
+	e = c.ws.WriteMessage(websocket.TextMessage, []byte(msg))
 	return
 }
 
@@ -125,54 +120,22 @@ func (c *client) promptSecure(selector, text string) (s string, e error) {
 
 // appendMsg appends a msg (div.msg) element to selector.
 func (c *client) appendMsg(selector, text string) (e error) {
-	p := newPacket("appendElement")
-	p.Data["Element"] = "div"
-	p.Data["Selector"] = selector
-	p.Data["Class"] = "msg"
-	p.Data["Text"] = text
-	p.Data["Scroll"] = "true"
-	e = c.ws.WriteJSON(p)
-	return
-}
-
-func (c *client) appendLink(selector, url, text string) (e error) {
-	p := newPacket("appendElement")
-	p.Data["Element"] = "a"
-	p.Data["Selector"] = selector
-	p.Data["Id"] = text
-	p.Data["Class"] = "ip-link"
-	p.Data["Href"] = url
-	p.Data["Text"] = text
-	p.Data["Target"] = "_blank"
-	p.Data["Scroll"] = "true"
-	p.Data["OnClick"] = "removeDecoration"
-	e = c.ws.WriteJSON(p)
-	return
-}
-
-func (c *client) appendBreak(selector string) (e error) {
-	p := newPacket("appendElement")
-	p.Data["Element"] = "br"
-	p.Data["Selector"] = selector
-	p.Data["Scroll"] = "true"
-	e = c.ws.WriteJSON(p)
+	elem := "<div class=\"msg\">" + text + "</div>"
+	c.write(fmt.Sprintf("append(\"%s\", '%s')", selector, elem))
+	c.write(fmt.Sprintf("scroll(\"%s\")", selector))
 	return
 }
 
 // focus will set the window focus on selector
 func (c *client) focus(selector, value string) (e error) {
-	p := newPacket("focus")
-	p.Data["Selector"] = selector
-	p.Data["Value"] = value
-	e = c.ws.WriteJSON(p)
+	str := fmt.Sprintf("focus(\"%s\", %s)", selector, value)
+	e = c.write(str)
 	return
 }
 
 // exists will check if selector exists
 func (c *client) exists(selector string) (bl bool) {
-	p := newPacket("exists")
-	p.Data["Selector"] = selector
-	e := c.ws.WriteJSON(p)
+	e := c.write(fmt.Sprintf("exists(\"%s\")", selector))
 	if e == nil {
 		b, e := c.recieve()
 		if e == nil && string(b) == "true" {
@@ -184,19 +147,14 @@ func (c *client) exists(selector string) (bl bool) {
 
 // innerHTML will set the html content of selector
 func (c *client) innerHTML(selector, value string) (e error) {
-	p := newPacket("innerHTML")
-	p.Data["Selector"] = selector
-	p.Data["Value"] = value
-	e = c.ws.WriteJSON(p)
+	e = c.write(fmt.Sprintf("innerHTML(\"%s\", '%s')", selector, value))
 	return
 }
 
 // getHTML returns the innerHTML of selector
 func (c *client) getHTML(selector string) (s string, e error) {
 	if c.exists(selector) {
-		p := newPacket("getHTML")
-		p.Data["Selector"] = selector
-		e = c.ws.WriteJSON(p)
+		e = c.write(fmt.Sprintf("getHTML(\"%s\")", selector))
 		if e == nil {
 			b, e := c.recieve()
 			if e == nil {
@@ -211,20 +169,13 @@ func (c *client) getHTML(selector string) (s string, e error) {
 
 // setAttribute sets the specified attribute for selector.
 func (c *client) setAttribute(selector, attribute, value string) (e error) {
-	p := newPacket("setAttribute")
-	p.Data["Selector"] = selector
-	p.Data["Attribute"] = attribute
-	p.Data["Value"] = value
-	e = c.ws.WriteJSON(p)
+	e = c.write(fmt.Sprintf("setAttribute(\"%s\", \"%s\", \"%s\")", selector, attribute, value))
 	return
 }
 
 // getAttribute returns the current value of an attribute of selector.
 func (c *client) getAttribute(selector, attribute string) (s string, e error) {
-	p := newPacket("getAttribute")
-	p.Data["Selector"] = selector
-	p.Data["Attribute"] = attribute
-	e = c.ws.WriteJSON(p)
+	e = c.write(fmt.Sprintf("getAttribute(\"%s\", \"%s\")", selector, attribute))
 	if e == nil {
 		b, e := c.recieve()
 		if e == nil {
@@ -236,19 +187,13 @@ func (c *client) getAttribute(selector, attribute string) (s string, e error) {
 
 // setProperty sets the specified CSS property of selector.
 func (c *client) setProperty(selector, property, value string) (e error) {
-	p := newPacket(property)
-	p.Data["Selector"] = selector
-	p.Data["Value"] = value
-	e = c.ws.WriteJSON(p)
+	e = c.write(fmt.Sprintf("setProperty(\"%s\", \"%s\", \"%s\")", selector, property, value))
 	return
 }
 
 // getProperty returns the current (computed) value for the specified CSS property of selector.
 func (c *client) getProperty(selector, property string) (s string, e error) {
-	p := newPacket("getProperty")
-	p.Data["Selector"] = selector
-	p.Data["Property"] = property
-	e = c.ws.WriteJSON(p)
+	e = c.write(fmt.Sprintf("getProperty(\"%s\", \"%s\")", selector, property))
 	if e == nil {
 		b, e := c.recieve()
 		if e == nil {
@@ -260,9 +205,6 @@ func (c *client) getProperty(selector, property string) (s string, e error) {
 
 // editable sets the editable property of the element
 func (c *client) editable(selector, value string) (e error) {
-	p := newPacket("editable")
-	p.Data["Selector"] = selector
-	p.Data["Value"] = value
-	e = c.ws.WriteJSON(p)
+	e = c.write(fmt.Sprintf("editable(\"%s\", %s)", selector, value))
 	return
 }
