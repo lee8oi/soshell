@@ -80,7 +80,7 @@ func (c *client) runCommand(args []string) (e error) {
 	if cmd, exists := (*c.command)[strings.ToLower(args[0])]; exists {
 		e = cmd.Handler(c, args)
 	} else {
-		e = errors.New("Command not found.")
+		e = errors.New(args[0] + ": Command not found.")
 	}
 	return
 }
