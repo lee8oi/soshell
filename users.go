@@ -52,12 +52,14 @@ func isName(name string) bool {
 	return !nameReg.MatchString(name)
 }
 
+// randNum generates a random 5 digit number.
 func randNum() string {
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	ar := r.Perm(5)
 	return fmt.Sprintf("%d%d%d%d%d", ar[0], ar[1], ar[2], ar[3], ar[4])
 }
 
+// guestName returns a unique guestname.
 func guestName() string {
 	name := "Guest" + randNum()
 	for {
@@ -71,6 +73,7 @@ func guestName() string {
 	return name
 }
 
+// loadUserDB loads the user database from file.
 func loadUserDB() {
 	var err error
 	database, err = db.OpenDB(*dbpath + SEP + "database")
@@ -95,6 +98,7 @@ func loadUserDB() {
 	log.Println("Loaded user database.")
 }
 
+// closeUserDB will (obviously) close the user database gracefully.
 func closeUserDB() {
 	if err := database.Close(); err != nil {
 		log.Println(err)
@@ -102,6 +106,7 @@ func closeUserDB() {
 	log.Println("Closed user database.")
 }
 
+// userExists checks if the user exists in the user database.
 func userExists(name string) bool {
 	_, rb, err := queryUser(name)
 	if err != nil {
@@ -113,6 +118,7 @@ func userExists(name string) bool {
 	return false
 }
 
+// userID returns the docID for the specified user.
 func userID(name string) int {
 	var query interface{}
 	result := make(map[int]struct{})
@@ -128,6 +134,7 @@ func userID(name string) int {
 	return 0
 }
 
+// userDoc returns the database doc for the specified docID.
 func userDoc(id int) (rb map[string]interface{}, err error) {
 	rb, err = userDB.Read(id)
 	if err != nil {
@@ -136,6 +143,7 @@ func userDoc(id int) (rb map[string]interface{}, err error) {
 	return
 }
 
+// queryUser returns the docID and the respective doc for the specified user.
 func queryUser(name string) (id int, rb map[string]interface{}, err error) {
 	if id := userID(name); id == 0 {
 		return 0, nil, errors.New("User not found.")
@@ -167,6 +175,7 @@ func (u *user) login(name, pass string) error {
 	}
 }
 
+// logout clears the user's authentication and resets them back to guest.
 func (u *user) logout() error {
 	if u.auth == true {
 		delete(users, strings.ToLower(u.Name))
